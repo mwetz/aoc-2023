@@ -1,8 +1,9 @@
-use std::fs;
 use regex::Regex;
+use std::fs;
 
 fn read_input() -> String {
-    let input: String = fs::read_to_string("src/bin/input2.txt").expect("Expected to read the file");
+    let input: String =
+        fs::read_to_string("src/bin/input2.txt").expect("Expected to read the file");
     return input;
 }
 
@@ -17,7 +18,7 @@ fn to_digit(s: &str) -> &str {
         "seven" => "7",
         "eight" => "8",
         "nine" => "9",
-        _ => s       
+        _ => s,
     }
 }
 
@@ -32,20 +33,20 @@ fn get_value(s: String) -> u32 {
     let last = cap_last.get(1).unwrap().as_str();
 
     let c = to_digit(first).to_owned() + to_digit(last);
-    return c.parse().unwrap()
-} 
+    return c.parse().unwrap();
+}
 
 fn get_sum(input: String) -> u32 {
     let mut sum = 0;
     for i in input.lines() {
         sum = sum + get_value(i.to_string());
     }
-    return sum
+    return sum;
 }
 
 fn main() {
     let input: String = read_input();
-    println!("{}", {get_sum(input)});
+    println!("{}", { get_sum(input) });
 }
 
 #[cfg(test)]

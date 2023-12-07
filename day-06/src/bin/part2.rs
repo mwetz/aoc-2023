@@ -1,10 +1,10 @@
-use std::fs;
 use itertools::Itertools;
-use regex::Regex;
-use nom::multi::{separated_list1, separated_list0};
 use nom::bytes::complete::tag;
-use nom::character::complete::{newline,space0,u32};
-use nom::sequence::{delimited,pair};
+use nom::character::complete::{newline, space0, u32};
+use nom::multi::{separated_list0, separated_list1};
+use nom::sequence::{delimited, pair};
+use regex::Regex;
+use std::fs;
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected to read the file");
@@ -15,8 +15,28 @@ fn run(input: String) -> u64 {
     // let mut parse_time = pair(tag("Time:"), separated_list0(tag(" "), u32));
     // let mut parse_dist = pair(tag("Distance:"), separated_list0(tag(" "), u32));
     let mut li = input.lines().into_iter();
-    let time: u64 = li.next().unwrap().split(":").last().unwrap().split(" ").filter(|x| x.len() > 0).join("").parse().unwrap();
-    let dist: u64 = li.next().unwrap().split(":").last().unwrap().split(" ").filter(|x| x.len() > 0).join("").parse().unwrap();
+    let time: u64 = li
+        .next()
+        .unwrap()
+        .split(":")
+        .last()
+        .unwrap()
+        .split(" ")
+        .filter(|x| x.len() > 0)
+        .join("")
+        .parse()
+        .unwrap();
+    let dist: u64 = li
+        .next()
+        .unwrap()
+        .split(":")
+        .last()
+        .unwrap()
+        .split(" ")
+        .filter(|x| x.len() > 0)
+        .join("")
+        .parse()
+        .unwrap();
 
     let mut races = 0;
     for k in 0..time {
@@ -25,7 +45,7 @@ fn run(input: String) -> u64 {
             races += 1;
         }
     }
-    return races
+    return races;
 }
 
 fn main() {

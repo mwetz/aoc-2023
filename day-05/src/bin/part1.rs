@@ -1,13 +1,19 @@
-use std::{fs, collections::HashMap};
 use itertools::Itertools;
 use regex::Regex;
+use std::{collections::HashMap, fs};
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected to read the file");
     return input;
 }
 
-fn update_dst_vec(src: &Vec<i64>, dst: &Vec<i64>, src_start: &i64, dst_start: &i64, rng: &i64) -> Vec<i64> {
+fn update_dst_vec(
+    src: &Vec<i64>,
+    dst: &Vec<i64>,
+    src_start: &i64,
+    dst_start: &i64,
+    rng: &i64,
+) -> Vec<i64> {
     let src_end: i64 = src_start + rng;
     let mut dst_new = dst.clone();
     for (i, j) in src.iter().enumerate() {
@@ -15,7 +21,7 @@ fn update_dst_vec(src: &Vec<i64>, dst: &Vec<i64>, src_start: &i64, dst_start: &i
             dst_new[i] = j - src_start + dst_start;
         }
     }
-    return dst_new
+    return dst_new;
 }
 
 fn run(input: String) -> i64 {
@@ -27,9 +33,17 @@ fn run(input: String) -> i64 {
     let mut prodmap: HashMap<&str, Vec<i64>> = HashMap::new();
     for l in input.lines() {
         if re_seeds.is_match(l) {
-            let seeds_str = re_seeds.captures(l).unwrap().name("seeds").unwrap().as_str();
+            let seeds_str = re_seeds
+                .captures(l)
+                .unwrap()
+                .name("seeds")
+                .unwrap()
+                .as_str();
             // println!("Seeds str {}", seeds_str);
-            let seeds: Vec<i64> = seeds_str.split(' ').map(|x| x.parse().unwrap()).collect_vec();
+            let seeds: Vec<i64> = seeds_str
+                .split(' ')
+                .map(|x| x.parse().unwrap())
+                .collect_vec();
             prodmap.insert("seed", seeds);
         }
         if re_map.is_match(l) {
@@ -39,10 +53,37 @@ fn run(input: String) -> i64 {
             prodmap.insert(dst, prodmap.get(src).unwrap().clone());
         }
         if re_values.is_match(l) {
-            let src_start: i64 = re_values.captures(l).unwrap().name("src_start").unwrap().as_str().parse().unwrap();
-            let dst_start: i64 = re_values.captures(l).unwrap().name("dst_start").unwrap().as_str().parse().unwrap();
-            let rng: i64 = re_values.captures(l).unwrap().name("rng").unwrap().as_str().parse().unwrap();
-            let new_dst = update_dst_vec(prodmap.get(src).unwrap(), prodmap.get(dst).unwrap(), &src_start, &dst_start, &rng);
+            let src_start: i64 = re_values
+                .captures(l)
+                .unwrap()
+                .name("src_start")
+                .unwrap()
+                .as_str()
+                .parse()
+                .unwrap();
+            let dst_start: i64 = re_values
+                .captures(l)
+                .unwrap()
+                .name("dst_start")
+                .unwrap()
+                .as_str()
+                .parse()
+                .unwrap();
+            let rng: i64 = re_values
+                .captures(l)
+                .unwrap()
+                .name("rng")
+                .unwrap()
+                .as_str()
+                .parse()
+                .unwrap();
+            let new_dst = update_dst_vec(
+                prodmap.get(src).unwrap(),
+                prodmap.get(dst).unwrap(),
+                &src_start,
+                &dst_start,
+                &rng,
+            );
             prodmap.insert(dst, new_dst);
         }
     }
@@ -52,7 +93,7 @@ fn run(input: String) -> i64 {
     //     println!("{l}")
     // }
     let min = location.iter().min().unwrap().clone();
-    return min
+    return min;
 }
 
 fn main() {

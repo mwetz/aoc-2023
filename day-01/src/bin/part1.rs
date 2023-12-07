@@ -7,33 +7,33 @@ fn read_input() -> String {
 
 fn get_value(s: String) -> u32 {
     let mut number = String::new();
-    for i in s.chars(){
+    for i in s.chars() {
         if i.is_numeric() {
             number.push(i);
-            break
+            break;
         }
     }
-    for i in s.chars().rev(){
+    for i in s.chars().rev() {
         if i.is_numeric() {
             number.push(i);
-            break
+            break;
         }
     }
     let sum = number.parse().expect("Expected parsable number");
-    return sum
-} 
+    return sum;
+}
 
 fn get_sum(input: String) -> u32 {
     let mut sum = 0;
     for i in input.lines() {
         sum = sum + get_value(i.to_string());
     }
-    return sum
+    return sum;
 }
 
 fn main() {
     let input: String = read_input();
-    println!("{}", {get_sum(input)});
+    println!("{}", { get_sum(input) });
 }
 
 #[cfg(test)]

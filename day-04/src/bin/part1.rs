@@ -1,30 +1,44 @@
-use std::fs;
 use itertools::Itertools;
+use std::fs;
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected to read the file");
     return input;
 }
 
-fn get_matches(line: &str) -> u32 {    
+fn get_matches(line: &str) -> u32 {
     let l_card = line.split(":").collect_vec();
     let mut l_iter = l_card.get(1).unwrap().split("|");
-    let winning = l_iter.next().unwrap().split(" ").filter(|x| x.len() > 0).collect_vec();
-    let check = l_iter.next().unwrap().split(" ").filter(|x| x.len() > 0).collect_vec();
+    let winning = l_iter
+        .next()
+        .unwrap()
+        .split(" ")
+        .filter(|x| x.len() > 0)
+        .collect_vec();
+    let check = l_iter
+        .next()
+        .unwrap()
+        .split(" ")
+        .filter(|x| x.len() > 0)
+        .collect_vec();
     let matches = check.iter().map(|x| winning.contains(x) as u32).sum();
-    return matches
+    return matches;
 }
 
 fn get_value(matches: u32) -> u32 {
     match matches {
         0 => return 0,
-        _ => return u32::pow(2, matches - 1)
+        _ => return u32::pow(2, matches - 1),
     }
 }
 
 fn run(input: String) -> u32 {
-    let sum:u32 = input.lines().map(|x| get_matches(x)).map(|x| get_value(x)).sum();
-    return sum
+    let sum: u32 = input
+        .lines()
+        .map(|x| get_matches(x))
+        .map(|x| get_value(x))
+        .sum();
+    return sum;
 }
 
 fn main() {

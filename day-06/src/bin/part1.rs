@@ -1,13 +1,14 @@
-use std::fs;
 use itertools::Itertools;
-use regex::Regex;
-use nom::{multi::{separated_list1, separated_list0, many0},
-          bytes::complete::{tag,take_until,is_not},
-          character::complete::{newline,space0,space1,digit1},
-          sequence::{delimited,pair,terminated,tuple},
-          IResult,
-          combinator::{map_res}
+use nom::{
+    bytes::complete::{is_not, tag, take_until},
+    character::complete::{digit1, newline, space0, space1},
+    combinator::map_res,
+    multi::{many0, separated_list0, separated_list1},
+    sequence::{delimited, pair, terminated, tuple},
+    IResult,
 };
+use regex::Regex;
+use std::fs;
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected input.txt");
@@ -15,19 +16,22 @@ fn read_input() -> String {
 }
 
 fn parse_numbers(input: &str) -> IResult<&str, u32> {
-    return map_res(digit1, |s: &str| s.parse::<u32>())(input)
+    return map_res(digit1, |s: &str| s.parse::<u32>())(input);
 }
 
 fn parse_list(input: &str) -> IResult<&str, Vec<u32>> {
-    return separated_list1(space1, parse_numbers)(input)
+    return separated_list1(space1, parse_numbers)(input);
 }
 
 fn parse_line(input: &str) -> IResult<&str, (&str, &str, &str, Vec<u32>)> {
-    return tuple((is_not(":"), tag(":"), space1, parse_list))(input)
+    return tuple((is_not(":"), tag(":"), space1, parse_list))(input);
 }
 
 fn parse_input(input: &str) -> Vec<Vec<u32>> {
-    return input.lines().map(|x| parse_line(x).unwrap().1.3).collect_vec()
+    return input
+        .lines()
+        .map(|x| parse_line(x).unwrap().1 .3)
+        .collect_vec();
 }
 
 fn run(input: String) -> i32 {
@@ -46,7 +50,7 @@ fn run(input: String) -> i32 {
         }
         race_mult = race_mult * races;
     }
-    return race_mult
+    return race_mult;
 }
 
 fn main() {

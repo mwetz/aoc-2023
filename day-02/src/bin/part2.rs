@@ -1,32 +1,33 @@
-use std::fs;
 use regex::Regex;
+use std::fs;
 
 fn read_input() -> String {
-    let input: String = fs::read_to_string("src/bin/input1.txt").expect("Expected to read the file");
+    let input: String =
+        fs::read_to_string("src/bin/input1.txt").expect("Expected to read the file");
     return input;
 }
 
 struct Game {
     id: u32,
-    rounds: Vec<Round>
+    rounds: Vec<Round>,
 }
 
 impl Game {
     fn is_valid(&self, other: Bag) -> bool {
-        return self.rounds.iter().map(|x| x.is_valid(other)).all(|x| x)
+        return self.rounds.iter().map(|x| x.is_valid(other)).all(|x| x);
     }
     fn get_power(&self) -> u32 {
         let min_red = self.rounds.iter().map(|x| x.blue).max().unwrap();
         let min_green = self.rounds.iter().map(|x| x.green).max().unwrap();
         let min_blue = self.rounds.iter().map(|x| x.red).max().unwrap();
-        return min_red * min_green * min_blue
+        return min_red * min_green * min_blue;
     }
 }
 
 struct Round {
     blue: u32,
     green: u32,
-    red: u32
+    red: u32,
 }
 
 impl Round {
@@ -39,7 +40,7 @@ impl Round {
 struct Bag {
     blue: u32,
     green: u32,
-    red: u32
+    red: u32,
 }
 
 fn parse_input(input: String) -> Vec<Game> {
@@ -50,36 +51,61 @@ fn parse_input(input: String) -> Vec<Game> {
     let mut games = Vec::new();
     for l in input.lines() {
         let mut l_iter = l.split(":");
-        let cap_id = re_id.captures(l_iter.next().unwrap()).ok_or("no match").unwrap();
+        let cap_id = re_id
+            .captures(l_iter.next().unwrap())
+            .ok_or("no match")
+            .unwrap();
         let id: u32 = cap_id.get(1).unwrap().as_str().parse().unwrap();
         let mut rounds = Vec::new();
         for i in l_iter.next().unwrap().split(";") {
             let cap_red = re_red.captures(i);
             let mut red: u32 = 0;
             if cap_red.is_some() {
-                red = cap_red.unwrap().name("red").map_or("0", |m| m.as_str()).parse().unwrap();
+                red = cap_red
+                    .unwrap()
+                    .name("red")
+                    .map_or("0", |m| m.as_str())
+                    .parse()
+                    .unwrap();
             }
             let cap_green = re_green.captures(i);
             let mut green: u32 = 0;
             if cap_green.is_some() {
-                green = cap_green.unwrap().name("green").map_or("0", |m| m.as_str()).parse().unwrap();
+                green = cap_green
+                    .unwrap()
+                    .name("green")
+                    .map_or("0", |m| m.as_str())
+                    .parse()
+                    .unwrap();
             }
             let cap_blue = re_blue.captures(i);
             let mut blue: u32 = 0;
             if cap_blue.is_some() {
-                blue = cap_blue.unwrap().name("blue").map_or("0", |m| m.as_str()).parse().unwrap();
+                blue = cap_blue
+                    .unwrap()
+                    .name("blue")
+                    .map_or("0", |m| m.as_str())
+                    .parse()
+                    .unwrap();
             }
-            rounds.push(Round { blue: blue, green: green, red: red })
+            rounds.push(Round {
+                blue: blue,
+                green: green,
+                red: red,
+            })
         }
-        games.push(Game { id: id, rounds: rounds })
+        games.push(Game {
+            id: id,
+            rounds: rounds,
+        })
     }
-    return games
+    return games;
 }
 
 fn run(input: String) -> u32 {
     let games = parse_input(input);
     let sum: u32 = games.iter().map(|x| x.get_power() as u32).sum();
-    return sum
+    return sum;
 }
 
 fn main() {
