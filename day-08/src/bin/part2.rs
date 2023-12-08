@@ -1,10 +1,9 @@
-use itertools::{enumerate, Itertools};
+use itertools::{Itertools};
 use nom::{
-    bytes::complete::{is_not, tag, take_until},
-    character::complete::{alphanumeric1, digit1, newline, space0, space1},
-    combinator::map_res,
-    multi::{many0, many1, separated_list0, separated_list1},
-    sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
+    bytes::complete::{tag},
+    character::complete::{alphanumeric1, newline, space0},
+    multi::{separated_list1},
+    sequence::{delimited, pair, preceded, separated_pair},
     IResult,
 };
 use std::{collections::HashMap, fs};

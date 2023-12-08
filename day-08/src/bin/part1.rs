@@ -1,52 +1,18 @@
-use itertools::{enumerate, Itertools};
+
 use nom::{
-    bytes::complete::{is_not, tag, take_until},
-    character::complete::{alphanumeric1, digit1, newline, space0, space1},
-    combinator::map_res,
-    multi::{many0, many1, separated_list0, separated_list1},
-    sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
+    bytes::complete::{tag},
+    character::complete::{alphanumeric1, newline, space0},
+    multi::{separated_list1},
+    sequence::{delimited, pair, preceded, separated_pair},
     IResult,
 };
-use regex::Regex;
-use std::{collections::HashMap, fs, vec};
+
+use std::{collections::HashMap, fs};
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected input.txt");
-    return input;
+    input
 }
-
-// pub struct Arena {
-//     nodes: Vec<Node>,
-// }
-
-// pub struct NodeId {
-//     id: String,
-// }
-
-// pub struct Node {
-//     left: Option<NodeId>,
-//     right: Option<NodeId>,
-// }
-// impl Arena {
-//     pub fn new_node(&mut self, id, left, right) -> NodeId {
-//         // Get the next free index
-//         let next_index = self.nodes.len();
-
-//         // Push the node into the arena
-//         self.nodes.push(Node {
-//             parent: None,
-//             first_child: None,
-//             last_child: None,
-//             previous_sibling: None,
-//             next_sibling: None,
-//             data: data,
-//         });
-
-//         // Return the node identifier
-//         NodeId { index: next_index }
-
-// }
-// }
 
 fn parse_directions(input: &str) -> IResult<&str, &str> {
     preceded(space0, alphanumeric1)(input)
@@ -76,7 +42,7 @@ fn parse_input(input: &str) -> (&str, HashMap<&str, Vec<&str>>) {
         separated_pair(parse_directions, pair(newline, newline), parse_block)(input)
             .expect("Expected to parse file");
     let map = nodesvec.into_iter().collect::<HashMap<_, _>>();
-    return (directions, map);
+    (directions, map)
 }
 
 fn run(input: String) -> u32 {
@@ -98,7 +64,7 @@ fn run(input: String) -> u32 {
             }
         }
     }
-    return 0;
+    0
 }
 
 fn main() {
