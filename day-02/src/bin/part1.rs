@@ -3,7 +3,7 @@ use std::fs;
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected to read the file");
-    return input;
+    input
 }
 
 struct Game {
@@ -25,7 +25,7 @@ struct Round {
 
 impl Round {
     fn is_valid(&self, other: Bag) -> bool {
-        return self.red <= other.red && self.green <= other.green && self.blue <= other.blue;
+        self.red <= other.red && self.green <= other.green && self.blue <= other.blue
     }
 }
 
@@ -43,14 +43,14 @@ fn parse_input(input: String) -> Vec<Game> {
     let re_blue = Regex::new(r"(?<blue>\d+) blue").unwrap();
     let mut games = Vec::new();
     for l in input.lines() {
-        let mut l_iter = l.split(":");
+        let mut l_iter = l.split(':');
         let cap_id = re_id
             .captures(l_iter.next().unwrap())
             .ok_or("no match")
             .unwrap();
         let id: u32 = cap_id.get(1).unwrap().as_str().parse().unwrap();
         let mut rounds = Vec::new();
-        for i in l_iter.next().unwrap().split(";") {
+        for i in l_iter.next().unwrap().split(';') {
             let cap_red = re_red.captures(i);
             let mut red: u32 = 0;
             if cap_red.is_some() {
@@ -82,17 +82,17 @@ fn parse_input(input: String) -> Vec<Game> {
                     .unwrap();
             }
             rounds.push(Round {
-                blue: blue,
-                green: green,
-                red: red,
+                blue,
+                green,
+                red,
             })
         }
         games.push(Game {
-            id: id,
-            rounds: rounds,
+            id,
+            rounds,
         })
     }
-    return games;
+    games
 }
 
 fn run(input: String) -> u32 {
@@ -103,7 +103,7 @@ fn run(input: String) -> u32 {
         blue: 14,
     };
     let sum: u32 = games.iter().map(|x| x.id * x.is_valid(bag) as u32).sum();
-    return sum;
+    sum
 }
 
 fn main() {

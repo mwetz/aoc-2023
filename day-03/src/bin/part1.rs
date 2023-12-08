@@ -2,7 +2,7 @@ use std::fs;
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected to read the file");
-    return input;
+    input
 }
 
 enum Element {
@@ -23,14 +23,14 @@ struct Grid {
 
 impl Grid {
     fn is_point_symbol(&self, x: i32, y: i32) -> bool {
-        let point = self.points.iter().filter(|p| p.x == x && p.y == y).next();
-        return match point {
+        let point = self.points.iter().find(|p| p.x == x && p.y == y);
+        match point {
             None => false,
             _ => match point.unwrap().ele {
                 Element::Symbol => true,
                 _ => false,
             },
-        };
+        }
     }
 }
 
@@ -51,7 +51,7 @@ impl Number {
                 }
             }
         }
-        return neighbours;
+        neighbours
     }
     fn has_symbol(&self, grid: &Grid) -> bool {
         let neighbours = self.get_neighbours();
@@ -91,11 +91,11 @@ fn parse_input(input: String) -> (Grid, Vec<Number>) {
             match i {
                 '0'..='9' => number.push(i),
                 _ => {
-                    if number.len() > 0 {
+                    if !number.is_empty() {
                         numbers.push(Number {
                             y: y as i32,
                             xmin: x as i32 - number.len() as i32,
-                            xmax: x as i32 - 1 as i32,
+                            xmax: x as i32 - 1_i32,
                             value: String::from_iter(number).parse().unwrap(),
                         });
                         number = Vec::new();
@@ -103,16 +103,16 @@ fn parse_input(input: String) -> (Grid, Vec<Number>) {
                 }
             }
         }
-        if number.len() > 0 {
+        if !number.is_empty() {
             numbers.push(Number {
                 y: y as i32,
                 xmin: maxline as i32 - number.len() as i32,
-                xmax: maxline as i32 - 1 as i32,
+                xmax: maxline as i32 - 1_i32,
                 value: String::from_iter(number).parse().unwrap(),
             });
         }
     }
-    return (Grid { points: gridpoints }, numbers);
+    (Grid { points: gridpoints }, numbers)
 }
 
 fn run(input: String) -> u32 {
@@ -124,7 +124,7 @@ fn run(input: String) -> u32 {
         .iter()
         .map(|n| n.value * n.has_symbol(&grid) as u32)
         .sum();
-    return sum;
+    sum
 }
 
 fn main() {

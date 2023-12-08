@@ -4,7 +4,7 @@ use std::fs;
 fn read_input() -> String {
     let input: String =
         fs::read_to_string("src/bin/input1.txt").expect("Expected to read the file");
-    return input;
+    input
 }
 
 struct Game {
@@ -20,7 +20,7 @@ impl Game {
         let min_red = self.rounds.iter().map(|x| x.blue).max().unwrap();
         let min_green = self.rounds.iter().map(|x| x.green).max().unwrap();
         let min_blue = self.rounds.iter().map(|x| x.red).max().unwrap();
-        return min_red * min_green * min_blue;
+        min_red * min_green * min_blue
     }
 }
 
@@ -32,7 +32,7 @@ struct Round {
 
 impl Round {
     fn is_valid(&self, other: Bag) -> bool {
-        return self.red <= other.red && self.green <= other.green && self.blue <= other.blue;
+        self.red <= other.red && self.green <= other.green && self.blue <= other.blue
     }
 }
 
@@ -50,14 +50,14 @@ fn parse_input(input: String) -> Vec<Game> {
     let re_blue = Regex::new(r"(?<blue>\d+) blue").unwrap();
     let mut games = Vec::new();
     for l in input.lines() {
-        let mut l_iter = l.split(":");
+        let mut l_iter = l.split(':');
         let cap_id = re_id
             .captures(l_iter.next().unwrap())
             .ok_or("no match")
             .unwrap();
         let id: u32 = cap_id.get(1).unwrap().as_str().parse().unwrap();
         let mut rounds = Vec::new();
-        for i in l_iter.next().unwrap().split(";") {
+        for i in l_iter.next().unwrap().split(';') {
             let cap_red = re_red.captures(i);
             let mut red: u32 = 0;
             if cap_red.is_some() {
@@ -89,23 +89,23 @@ fn parse_input(input: String) -> Vec<Game> {
                     .unwrap();
             }
             rounds.push(Round {
-                blue: blue,
-                green: green,
-                red: red,
+                blue,
+                green,
+                red,
             })
         }
         games.push(Game {
-            id: id,
-            rounds: rounds,
+            id,
+            rounds,
         })
     }
-    return games;
+    games
 }
 
 fn run(input: String) -> u32 {
     let games = parse_input(input);
-    let sum: u32 = games.iter().map(|x| x.get_power() as u32).sum();
-    return sum;
+    let sum: u32 = games.iter().map(|x| x.get_power()).sum();
+    sum
 }
 
 fn main() {

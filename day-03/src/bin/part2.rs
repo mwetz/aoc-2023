@@ -3,7 +3,7 @@ use std::fs;
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected to read the file");
-    return input;
+    input
 }
 
 enum Element {
@@ -25,14 +25,14 @@ struct Grid {
 
 impl Grid {
     fn get_number_id(&self, x: i32, y: i32) -> u32 {
-        let point = self.points.iter().filter(|p| p.x == x && p.y == y).next();
-        return match point {
+        let point = self.points.iter().find(|p| p.x == x && p.y == y);
+        match point {
             None => 0,
             _ => match point.unwrap().ele {
                 Element::Digit => point.unwrap().id,
                 _ => 0,
             },
-        };
+        }
     }
 }
 
@@ -56,7 +56,7 @@ impl Gear {
                 }
             }
         }
-        return neighbours;
+        neighbours
     }
 
     fn get_gearratio(&self, grid: &Grid, numbers: &Vec<Number>) -> u32 {
@@ -74,7 +74,7 @@ impl Gear {
                 .map(|x| x.value)
                 .product();
         } else {
-            return 0;
+            0
         }
     }
 }
@@ -96,7 +96,7 @@ fn parse_input(input: String) -> (Grid, Vec<Number>, Vec<Gear>) {
                     ele: Element::Dot,
                 }),
                 '0'..='9' => gridpoints.push(Point {
-                    id: id,
+                    id,
                     x: x as i32,
                     y: y as i32,
                     ele: Element::Digit,
@@ -112,9 +112,9 @@ fn parse_input(input: String) -> (Grid, Vec<Number>, Vec<Gear>) {
             match i {
                 '0'..='9' => number.push(i),
                 _ => {
-                    if number.len() > 0 {
+                    if !number.is_empty() {
                         numbers.push(Number {
-                            id: id,
+                            id,
                             value: String::from_iter(number).parse().unwrap(),
                         });
                         id += 1;
@@ -131,21 +131,21 @@ fn parse_input(input: String) -> (Grid, Vec<Number>, Vec<Gear>) {
                 _ => {}
             }
         }
-        if number.len() > 0 {
+        if !number.is_empty() {
             numbers.push(Number {
-                id: id,
+                id,
                 value: String::from_iter(number).parse().unwrap(),
             });
             id += 1;
         }
     }
-    return (Grid { points: gridpoints }, numbers, gears);
+    (Grid { points: gridpoints }, numbers, gears)
 }
 
 fn run(input: String) -> u32 {
     let (grid, numbers, gears) = parse_input(input);
     let sum: u32 = gears.iter().map(|n| n.get_gearratio(&grid, &numbers)).sum();
-    return sum;
+    sum
 }
 
 fn main() {

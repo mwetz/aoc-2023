@@ -4,7 +4,7 @@ use std::fs;
 fn read_input() -> String {
     let input: String =
         fs::read_to_string("src/bin/input2.txt").expect("Expected to read the file");
-    return input;
+    input
 }
 
 fn to_digit(s: &str) -> &str {
@@ -33,15 +33,15 @@ fn get_value(s: String) -> u32 {
     let last = cap_last.get(1).unwrap().as_str();
 
     let c = to_digit(first).to_owned() + to_digit(last);
-    return c.parse().unwrap();
+    c.parse().unwrap()
 }
 
 fn get_sum(input: String) -> u32 {
     let mut sum = 0;
     for i in input.lines() {
-        sum = sum + get_value(i.to_string());
+        sum += get_value(i.to_string());
     }
-    return sum;
+    sum
 }
 
 fn main() {

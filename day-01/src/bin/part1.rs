@@ -2,7 +2,7 @@ use std::fs;
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected to read the file");
-    return input;
+    input
 }
 
 fn get_value(s: String) -> u32 {
@@ -19,16 +19,16 @@ fn get_value(s: String) -> u32 {
             break;
         }
     }
-    let sum = number.parse().expect("Expected parsable number");
-    return sum;
+    
+    number.parse().expect("Expected parsable number")
 }
 
 fn get_sum(input: String) -> u32 {
     let mut sum = 0;
     for i in input.lines() {
-        sum = sum + get_value(i.to_string());
+        sum += get_value(i.to_string());
     }
-    return sum;
+    sum
 }
 
 fn main() {

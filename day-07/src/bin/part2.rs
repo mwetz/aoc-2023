@@ -1,18 +1,18 @@
-use itertools::{enumerate, Itertools};
+use itertools::{Itertools};
 use nom::{
-    bytes::complete::{is_not, tag, take_until},
-    character::complete::{digit1, newline, space0, space1},
+    bytes::complete::{is_not},
+    character::complete::{digit1, space1},
     combinator::map_res,
-    multi::{many0, separated_list0, separated_list1},
-    sequence::{delimited, pair, terminated, tuple},
+    multi::{separated_list1},
+    sequence::{tuple},
     IResult,
 };
-use regex::Regex;
+
 use std::{fs, vec};
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected input.txt");
-    return input;
+    input
 }
 
 #[derive(Debug)]
@@ -45,17 +45,17 @@ impl Hand {
         let mut freq_s = freq.into_iter().sorted().rev().collect_vec();
         freq_s[0] += joker;
         match freq_s[0] {
-            5 => return 10,
-            4 => return 9,
+            5 => 10,
+            4 => 9,
             3 => match freq_s[1] {
-                2 => return 8,
-                _ => return 7,
+                2 => 8,
+                _ => 7,
             },
             2 => match freq_s[1] {
-                2 => return 6,
-                _ => return 5,
+                2 => 6,
+                _ => 5,
             },
-            _ => return 4,
+            _ => 4,
         }
     }
 
@@ -72,27 +72,26 @@ impl Hand {
 }
 
 fn parse_numbers(input: &str) -> IResult<&str, u32> {
-    return map_res(digit1, |s: &str| s.parse::<u32>())(input);
+    map_res(digit1, |s: &str| s.parse::<u32>())(input)
 }
 
 fn parse_list(input: &str) -> IResult<&str, Vec<u32>> {
-    return separated_list1(space1, parse_numbers)(input);
+    separated_list1(space1, parse_numbers)(input)
 }
 
 fn parse_line(input: &str) -> (&str, &str, u32) {
-    return tuple((is_not(" "), space1, parse_numbers))(input)
+    tuple((is_not(" "), space1, parse_numbers))(input)
         .expect("hand - bid pair expected")
-        .1;
+        .1
 }
 
 fn parse_input(input: &str) -> Vec<Hand> {
     return input
         .lines()
-        .map(|x| parse_line(x))
-        .into_iter()
-        .map(|(hand, x, bid)| Hand {
+        .map(parse_line)
+        .map(|(hand, _x, bid)| Hand {
             hand: hand.chars().collect_vec(),
-            bid: bid,
+            bid,
         })
         .collect_vec();
 }
@@ -109,11 +108,11 @@ fn run(input: String) -> u32 {
         .sorted_by(|a, b| a.get_pos(0).cmp(&b.get_pos(0)))
         .sorted_by(|a, b| a.get_group().cmp(&b.get_group()))
         .collect_vec();
-    return hand_s
+    hand_s
         .into_iter()
         .enumerate()
         .map(|(rank, hand)| (1 + rank as u32) * hand.bid)
-        .sum();
+        .sum()
 }
 
 fn main() {

@@ -4,7 +4,7 @@ use std::{collections::HashMap, fs};
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected to read the file");
-    return input;
+    input
 }
 
 fn update_dst_vec(
@@ -21,7 +21,7 @@ fn update_dst_vec(
             dst_new[i] = j - src_start + dst_start;
         }
     }
-    return dst_new;
+    dst_new
 }
 
 fn run(input: String) -> i64 {
@@ -92,8 +92,8 @@ fn run(input: String) -> i64 {
     // for l in &location {
     //     println!("{l}")
     // }
-    let min = location.iter().min().unwrap().clone();
-    return min;
+    let min = *location.iter().min().unwrap();
+    min
 }
 
 fn main() {

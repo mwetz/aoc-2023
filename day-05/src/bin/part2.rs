@@ -4,7 +4,7 @@ use std::{collections::HashMap, fs};
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected to read the file");
-    return input;
+    input
 }
 
 #[derive(Copy, Clone)]
@@ -125,7 +125,7 @@ fn update_dst_vec(
             dst_new.extend(vec![dst]);
         }
     }
-    return (src_new, dst_new);
+    (src_new, dst_new)
 }
 
 fn run(input: String) -> i64 {
@@ -158,7 +158,7 @@ fn run(input: String) -> i64 {
         if re_map.is_match(l) {
             src = re_map.captures(l).unwrap().name("src").unwrap().as_str();
             dst = re_map.captures(l).unwrap().name("dst").unwrap().as_str();
-            prodmap.insert(dst, prodmap.get(src).clone().unwrap().clone());
+            prodmap.insert(dst, prodmap.get(src).unwrap().clone());
         }
         if re_values.is_match(l) {
             let src_start: i64 = re_values
@@ -202,8 +202,8 @@ fn run(input: String) -> i64 {
         .iter()
         .map(|x| x.start)
         .collect_vec();
-    let min = location.iter().min().unwrap().clone();
-    return min;
+    let min = *location.iter().min().unwrap();
+    min
 }
 
 fn main() {

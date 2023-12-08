@@ -3,26 +3,26 @@ use std::fs;
 
 fn read_input() -> String {
     let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected to read the file");
-    return input;
+    input
 }
 
 fn get_matches(line: &str) -> u32 {
-    let l_card = line.split(":").collect_vec();
-    let mut l_iter = l_card.get(1).unwrap().split("|");
+    let l_card = line.split(':').collect_vec();
+    let mut l_iter = l_card.get(1).unwrap().split('|');
     let winning = l_iter
         .next()
         .unwrap()
-        .split(" ")
-        .filter(|x| x.len() > 0)
+        .split(' ')
+        .filter(|x| !x.is_empty())
         .collect_vec();
     let check = l_iter
         .next()
         .unwrap()
-        .split(" ")
-        .filter(|x| x.len() > 0)
+        .split(' ')
+        .filter(|x| !x.is_empty())
         .collect_vec();
     let matches = check.iter().map(|x| winning.contains(x) as u32).sum();
-    return matches;
+    matches
 }
 
 fn run(input: String) -> u32 {
@@ -33,10 +33,10 @@ fn run(input: String) -> u32 {
         cards += card_mult[i];
         // println!("{}: {} cards won {} times", i, card_mult[i], wins);
         for j in 0..wins {
-            card_mult[1 + i + j as usize] = card_mult[1 + i + j as usize] + card_mult[i]
+            card_mult[1 + i + j as usize] += card_mult[i]
         }
     }
-    return cards;
+    cards
 }
 
 fn main() {
