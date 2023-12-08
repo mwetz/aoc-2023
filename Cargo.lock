@@ -130,6 +130,8 @@ dependencies = [
  "itertools",
  "nom",
  "num",
+ "rayon",
+ "regex",
 ]
 
 [[package]]

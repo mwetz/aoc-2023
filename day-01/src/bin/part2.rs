@@ -3,7 +3,7 @@ use std::fs;
 
 fn read_input() -> String {
     let input: String =
-        fs::read_to_string("src/bin/input2.txt").expect("Expected to read the file");
+        fs::read_to_string("src/bin/input.txt").expect("Expected to read the file");
     input
 }
 

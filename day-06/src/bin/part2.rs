@@ -1,9 +1,5 @@
 use itertools::Itertools;
 
-
-
-
-
 use std::fs;
 
 fn read_input() -> String {
