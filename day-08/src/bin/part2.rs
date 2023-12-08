@@ -1,11 +1,12 @@
-use itertools::{Itertools};
+use itertools::Itertools;
 use nom::{
-    bytes::complete::{tag},
+    bytes::complete::tag,
     character::complete::{alphanumeric1, newline, space0},
-    multi::{separated_list1},
+    multi::separated_list1,
     sequence::{delimited, pair, preceded, separated_pair},
     IResult,
 };
+use num::integer::lcm;
 use std::{collections::HashMap, fs};
 
 fn read_input() -> String {
@@ -75,18 +76,16 @@ fn find_sequence(start: &str, directions: &str, map: &HashMap<&str, Vec<&str>>) 
 
 fn run(input: String) -> u64 {
     let (directions, map) = parse_input(input.as_str());
-    let nodeid = &map.keys().filter(|x| x.ends_with('A')).collect_vec();
+    let nodeid = map.keys().filter(|x| x.ends_with('A')).collect_vec();
     let steps = nodeid
         .iter()
         .map(|x| find_sequence(x, directions, &map))
         .collect_vec();
-    let steps_min = steps.iter().min().expect("Minimum should exist");
-    for i in 1.. {
-        if steps.iter().all(|x| (steps_min * i) % x == 0) {
-            return steps_min * i;
-        }
+    let mut steps_full = 1;
+    for i in steps.iter() {
+        steps_full = lcm(steps_full, *i)
     }
-    0
+    steps_full
 }
 
 fn main() {

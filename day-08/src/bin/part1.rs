@@ -1,8 +1,7 @@
-
 use nom::{
-    bytes::complete::{tag},
+    bytes::complete::tag,
     character::complete::{alphanumeric1, newline, space0},
-    multi::{separated_list1},
+    multi::separated_list1,
     sequence::{delimited, pair, preceded, separated_pair},
     IResult,
 };
