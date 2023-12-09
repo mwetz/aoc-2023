@@ -1,91 +1,54 @@
 use itertools::Itertools;
 use nom::{
     bytes::complete::tag,
-    character::complete::{alphanumeric1, newline, space0},
+    character::complete::{alphanumeric1, digit1, i64, newline, space0, space1},
     multi::separated_list1,
     sequence::{delimited, pair, preceded, separated_pair},
-    IResult,
+    IResult, Parser,
 };
-use num::integer::lcm;
+
 use std::{collections::HashMap, fs};
 
 fn read_input() -> String {
-    fs::read_to_string("src/bin/input.txt").expect("Expected input.txt")
+    let input: String = fs::read_to_string("src/bin/input.txt").expect("Expected input.txt");
+    input
 }
 
-fn parse_directions(input: &str) -> IResult<&str, &str> {
-    preceded(space0, alphanumeric1)(input)
+fn parse_line(input: &str) -> IResult<&str, Vec<i64>> {
+    preceded(space0, separated_list1(space1, i64))(input)
 }
 
-fn parse_node(input: &str) -> IResult<&str, (&str, Vec<&str>)> {
-    preceded(
-        space0,
-        separated_pair(
-            alphanumeric1,
-            tag(" = "),
-            delimited(
-                tag("("),
-                separated_list1(tag(", "), alphanumeric1),
-                tag(")"),
-            ),
-        ),
-    )(input)
+fn parse_block(input: &str) -> IResult<&str, Vec<Vec<i64>>> {
+    separated_list1(newline, parse_line)(input)
 }
 
-fn parse_block(input: &str) -> IResult<&str, Vec<(&str, Vec<&str>)>> {
-    separated_list1(newline, parse_node)(input)
+fn get_input(input: &str) -> Vec<Vec<i64>> {
+    parse_block(input).expect("Expected to parse file").1
 }
 
-fn parse_input(input: &str) -> (&str, HashMap<&str, Vec<&str>>) {
-    let (_, (directions, nodesvec)) =
-        separated_pair(parse_directions, pair(newline, newline), parse_block)(input)
-            .expect("Expected to parse file");
-    let map = nodesvec.into_iter().collect::<HashMap<&str, Vec<&str>>>();
-    (directions, map)
-}
-
-fn find_sequence(start: &str, directions: &str, map: &HashMap<&str, Vec<&str>>) -> u64 {
-    let mut nodeid = start;
-    let mut nextnodes = &map[nodeid];
-    let mut steps = 0;
-    let mut steps_to_first = 0;
-    let mut steps_to_next = 0;
-    for d in directions.repeat(100000).chars() {
-        steps += 1;
-        nodeid = match d {
-            'L' => nextnodes[0],
-            'R' => nextnodes[1],
-            _ => "",
-        };
-        nextnodes = &map[nodeid];
-        if nodeid.ends_with('Z') {
-            if steps_to_first > 0 {
-                steps_to_next = steps;
-            }
-            if steps_to_first == 0 {
-                steps_to_first = steps;
-            }
-            if steps_to_first > 0 && steps_to_next > 0 {
-                return steps_to_next;
-            }
-            steps = 0;
+fn get_next_element(measures: &[i64]) -> i64 {
+    let mut measures_new = measures.to_owned();
+    let mut last_reading: Vec<i64> = Vec::new();
+    for _i in 0.. {
+        if measures_new.iter().all(|&x| x == 0) {
+            return last_reading.iter().step_by(2).sum::<i64>()
+                - last_reading.iter().skip(1).step_by(2).sum::<i64>();
+        } else {
+            last_reading.push(*measures_new.first().expect("Last element expected"));
+            let measures_old = measures_new;
+            measures_new = measures_old
+                .iter()
+                .tuple_windows()
+                .map(|(a, b)| b - a)
+                .collect_vec();
         }
     }
     0
 }
 
-fn run(input: String) -> u64 {
-    let (directions, map) = parse_input(input.as_str());
-    let nodeid = map.keys().filter(|x| x.ends_with('A')).collect_vec();
-    let steps = nodeid
-        .iter()
-        .map(|x| find_sequence(x, directions, &map))
-        .collect_vec();
-    let mut steps_full = 1;
-    for i in steps.iter() {
-        steps_full = lcm(steps_full, *i)
-    }
-    steps_full
+fn run(input: String) -> i64 {
+    let full_readings = get_input(input.as_str());
+    full_readings.iter().map(|x| get_next_element(x)).sum()
 }
 
 fn main() {
@@ -100,16 +63,9 @@ mod tests {
     use super::*;
     #[test]
     fn test() {
-        let input: &'static str = "LR
-
-11A = (11B, XXX)
-11B = (XXX, 11Z)
-11Z = (11B, XXX)
-22A = (22B, XXX)
-22B = (22C, 22C)
-22C = (22Z, 22Z)
-22Z = (22B, 22B)
-XXX = (XXX, XXX)";
-        assert_eq!(run(input.to_string()), 6);
+        let input: &'static str = "0 3 6 9 12 15
+        1 3 6 10 15 21
+        10 13 16 21 30 45";
+        assert_eq!(run(input.to_string()), 2);
     }
 }
