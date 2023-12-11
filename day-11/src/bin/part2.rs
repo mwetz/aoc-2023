@@ -7,242 +7,119 @@ fn read_input() -> String {
     input
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
-enum Pipe {
-    Start,
-    WE,
-    NS,
-    NE,
-    SE,
-    SW,
-    NW,
+#[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
+enum Tile {
+    Galaxy,
     Empty,
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
 struct Point {
-    x: i32,
-    y: i32,
-    pipe: Pipe,
+    x: usize,
+    y: usize,
+    tile: Tile,
 }
 
-impl Point {
-    fn get_connected<'a>(
-        &'a self,
-        from: &Point,
-        grid: &'a Grid,
-    ) -> (Option<&Point>, Vec<Option<&Point>>) {
-        match self.pipe {
-            Pipe::Start => {
-                let connected = grid.get_point(self.x, self.y + 1);
-                if connected.is_some() {
-                    match connected.unwrap().pipe {
-                        Pipe::NS | Pipe::NE | Pipe::NW => return (connected, Vec::new()),
-                        _ => {}
-                    }
-                }
-                let connected = grid.get_point(self.x + 1, self.y);
-                if let Some(..) = connected {
-                    match connected.unwrap().pipe {
-                        Pipe::NW | Pipe::SW | Pipe::WE => return (connected, Vec::new()),
-                        _ => {}
-                    }
-                    let connected = grid.get_point(self.x, self.y - 1);
-                    if connected.is_some() {
-                        match connected.unwrap().pipe {
-                            Pipe::SE | Pipe::SW | Pipe::NS => return (connected, Vec::new()),
-                            _ => {}
-                        }
-                    }
-                    let connected = grid.get_point(self.x - 1, self.y);
-                    if connected.is_some() {
-                        match connected.unwrap().pipe {
-                            Pipe::WE | Pipe::NE | Pipe::SE => return (connected, Vec::new()),
-                            _ => {}
-                        }
-                    }
-                }
-                return (None, Vec::new());
-            }
-            Pipe::WE => {
-                if self.x > from.x {
-                    return (
-                        grid.get_point(self.x + 1, self.y),
-                        vec![grid.get_point(self.x, self.y + 1)],
-                    );
-                } else {
-                    return (
-                        grid.get_point(self.x - 1, self.y),
-                        vec![grid.get_point(self.x, self.y - 1)],
-                    );
-                }
-            }
-            Pipe::NS => {
-                if self.y > from.y {
-                    return (
-                        grid.get_point(self.x, self.y + 1),
-                        vec![grid.get_point(self.x - 1, self.y)],
-                    );
-                } else {
-                    return (
-                        grid.get_point(self.x, self.y - 1),
-                        vec![grid.get_point(self.x + 1, self.y)],
-                    );
-                }
-            }
-            Pipe::NE => {
-                if self.y > from.y {
-                    return (
-                        grid.get_point(self.x + 1, self.y),
-                        vec![
-                            grid.get_point(self.x - 1, self.y),
-                            grid.get_point(self.x, self.y + 1),
-                        ],
-                    );
-                } else {
-                    return (grid.get_point(self.x, self.y - 1), Vec::new());
-                }
-            }
-            Pipe::SE => {
-                if self.y < from.y {
-                    return (grid.get_point(self.x + 1, self.y), Vec::new());
-                } else {
-                    return (
-                        grid.get_point(self.x, self.y + 1),
-                        vec![
-                            grid.get_point(self.x - 1, self.y),
-                            grid.get_point(self.x, self.y - 1),
-                        ],
-                    );
-                }
-            }
-            Pipe::SW => {
-                if self.y < from.y {
-                    return (
-                        grid.get_point(self.x - 1, self.y),
-                        vec![
-                            grid.get_point(self.x + 1, self.y),
-                            grid.get_point(self.x, self.y - 1),
-                        ],
-                    );
-                } else {
-                    return (grid.get_point(self.x, self.y + 1), Vec::new());
-                }
-            }
-            Pipe::NW => {
-                if self.y > from.y {
-                    return (grid.get_point(self.x - 1, self.y), Vec::new());
-                } else {
-                    return (
-                        grid.get_point(self.x, self.y - 1),
-                        vec![
-                            grid.get_point(self.x + 1, self.y),
-                            grid.get_point(self.x, self.y + 1),
-                        ],
-                    );
-                }
-            }
-            _ => (None, Vec::new()),
-        }
-    }
-
-    fn get_adjacent<'a>(self: &'a Point, grid: &'a Grid) -> Vec<&Point> {
-        vec![
-            grid.get_point(self.x, self.y),
-            grid.get_point(self.x + 1, self.y),
-            grid.get_point(self.x - 1, self.y),
-            grid.get_point(self.x, self.y + 1),
-            grid.get_point(self.x, self.y - 1),
-        ]
-        .iter()
-        .filter(|x| x.is_some())
-        .map(|x| x.unwrap())
-        .collect_vec()
-    }
-}
+impl Point {}
 
 #[derive(Debug)]
 struct Grid {
     points: Vec<Point>,
+    max_x: usize,
+    max_y: usize,
 }
 
 impl Grid {
-    fn get_point(&self, x: i32, y: i32) -> Option<&Point> {
+    fn get_point(&self, x: usize, y: usize) -> Option<&Point> {
         self.points.iter().find(|p| p.x == x && p.y == y)
     }
 }
 
-fn get_grid(input: String) -> (Grid) {
+fn get_grid(input: String) -> Grid {
     let mut gridpoints = Vec::new();
+    let mut max_y = 0;
+    let mut max_x = 0;
     for (y, l) in input.lines().enumerate() {
+        max_y = y;
         for (x, i) in l.chars().enumerate() {
-            // Get grid information
+            max_x = x;
             gridpoints.push(Point {
-                x: x as i32,
-                y: y as i32,
-                pipe: match i {
-                    'S' => Pipe::Start,
-                    '|' => Pipe::NS,
-                    '-' => Pipe::WE,
-                    'L' => Pipe::NE,
-                    'J' => Pipe::NW,
-                    '7' => Pipe::SW,
-                    'F' => Pipe::SE,
-                    _ => Pipe::Empty,
+                x: x,
+                y: y,
+                tile: match i {
+                    '#' => Tile::Galaxy,
+                    _ => Tile::Empty,
                 },
             })
         }
     }
-    Grid { points: gridpoints }
+    Grid {
+        points: gridpoints,
+        max_x: max_x,
+        max_y: max_y,
+    }
 }
 
-fn traverse_pipe(grid: &Grid) -> (Vec<&Point>, Vec<&Point>) {
-    let mut steps: Vec<&Point> = Vec::new();
-    let start = grid
+fn extend_galaxy(grid: &Grid) -> Grid {
+    // Extend in x direction
+    let mut gridpoints_x: Vec<Point> = Vec::new();
+    let mut offset_x: usize = 0;
+    for x in 0..=grid.max_x {
+        let x_slice = grid.points.iter().filter(|&p| p.x == x).collect_vec();
+        if x_slice.clone().into_iter().all(|p| p.tile == Tile::Empty) {
+            offset_x += 1_000_000 - 1
+        }
+        gridpoints_x.extend(x_slice.clone().into_iter().map(|p| Point {
+            x: p.x + offset_x,
+            y: p.y,
+            tile: p.tile,
+        }));
+    }
+    let grid_x = Grid {
+        points: gridpoints_x,
+        max_x: grid.max_x + offset_x,
+        max_y: grid.max_y,
+    };
+
+    // Extend in y direction
+    let mut gridpoints_y: Vec<Point> = Vec::new();
+    let mut offset_y: usize = 0;
+    for y in 0..=grid_x.max_y {
+        let y_slice = grid_x.points.iter().filter(|&p| p.y == y).collect_vec();
+        if y_slice.clone().into_iter().all(|p| p.tile == Tile::Empty) {
+            offset_y += 1_000_000 - 1
+        }
+        gridpoints_y.extend(y_slice.clone().into_iter().map(|p| Point {
+            x: p.x,
+            y: p.y + offset_y,
+            tile: p.tile,
+        }));
+    }
+    Grid {
+        points: gridpoints_y,
+        max_x: grid_x.max_x,
+        max_y: grid_x.max_y + offset_y,
+    }
+}
+
+fn run(input: String) -> usize {
+    let galaxy = get_grid(input);
+    let ext_galaxy = extend_galaxy(&galaxy);
+    let galaxies = ext_galaxy
         .points
-        .iter()
-        .filter(|&x| match x.pipe {
-            Pipe::Start => true,
-            _ => false,
-        })
+        .into_iter()
+        .filter(|p| p.tile == Tile::Galaxy)
         .collect_vec();
-    let mut from = start[0];
-    let mut to = start[0];
-    let mut right_all: Vec<&Point> = Vec::new();
-    for i in 0..1_000_000 {
-        let (next, right) = to.get_connected(from, grid);
-        println!("{:?}", next.unwrap().pipe);
-        steps.push(next.unwrap());
-        right_all.extend(right.iter().filter(|x| x.is_some()).map(|x| x.unwrap()));
-        from = to;
-        to = next.expect("Expected next to be a point");
-        if let Pipe::Start = to.pipe {
-            println!("Finished loop!");
-            return (steps, right_all);
-        }
-    }
-    (Vec::new(), Vec::new())
-}
-
-fn run(input: String) -> u32 {
-    let grid = get_grid(input);
-    let (path, inner) = traverse_pipe(&grid);
-    let mut inner_extend = inner;
-    let mut count_last = 0;
-    for i in 0..100 {
-        let inner_new = inner_extend
-            .into_iter()
-            .unique()
-            .filter(|x| !&path.contains(x))
-            .collect_vec();
-        let count_new = inner_new.clone().into_iter().count() as u32;
-        inner_extend = inner_new.into_iter().map(|x| x.get_adjacent(&grid)).flatten().collect_vec();
-        if count_last == count_new {
-            return count_new;
-        }
-        count_last = count_new;
-    }
-    0
+    galaxies
+        .clone()
+        .into_iter()
+        .map(|a| {
+            galaxies
+                .clone()
+                .into_iter()
+                .map(move |b| a.x.abs_diff(b.x) + a.y.abs_diff(b.y)).sum::<usize>()
+        })
+        .sum::<usize>() / 2
 }
 
 fn main() {
@@ -257,16 +134,16 @@ mod tests {
     use super::*;
     #[test]
     fn test() {
-        let input: &'static str = ".F----7F7F7F7F-7....
-.|F--7||||||||FJ....
-.||.FJ||||||||L7....
-FJL7L7LJLJ||LJ.L-7..
-L--J.L7...LJS7F-7L7.
-....F-J..F7FJ|L7L7L7
-....L7.F7||L7|.L7L7|
-.....|FJLJ|FJ|F7|.LJ
-....FJL-7.||.||||...
-....L---J.LJ.LJLJ...";
-        assert_eq!(run(input.to_string()), 8);
+        let input: &'static str = "...#......
+.......#..
+#.........
+..........
+......#...
+.#........
+.........#
+..........
+.......#..
+#...#.....";
+        assert_eq!(run(input.to_string()), 1030);
     }
 }
