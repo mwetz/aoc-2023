@@ -13,6 +13,9 @@ members = [
     "day-09",
     "day-10",
     "day-11",
+    "day-12",
+    "day-13",
+    "day-14",
 ]
 
 [workspace.dependencies]
@@ -21,3 +24,6 @@ itertools = {version = "~0.12.0"}
 nom = {version = "~7.1.3"}
 num =  {version = "~0.4.1"}
 rayon = {version = "~1.8.0"}
+ndarray = {version = "~0.15.6"}
+rstest = {version = "~0.18.2"}
+divan = "0.1.7"
