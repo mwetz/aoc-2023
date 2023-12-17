@@ -1,121 +1,164 @@
 use itertools::Itertools;
 use nom::{
     bytes::complete::{is_a, is_not, tag},
-    character::complete::{alphanumeric1, digit1, i64, newline, space0, space1, u32},
+    character::complete::{alphanumeric1, digit1, i64, newline, space0, space1, u8},
     error::Error,
-    multi::{count, separated_list1},
+    multi::{count, many0, separated_list0, separated_list1},
     sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
     IResult, Parser, Slice,
 };
 use rayon::prelude::*;
-use std::{fs, ops::Add, vec};
 use rstest::rstest;
+use std::{
+    cmp,
+    collections::{HashMap, HashSet, VecDeque},
+    fs,
+    ops::Add,
+    vec,
+};
 
 fn read_input() -> String {
     fs::read_to_string("src/bin/input.txt").expect("Expected input.txt")
 }
 
-fn parse_line(input: &str) -> IResult<&str, (&str, Vec<u32>)> {
+fn parse_line(input: &str) -> IResult<&str, (&str, Vec<u8>)> {
     preceded(
         space0,
-        separated_pair(is_a("#.?"), space1, separated_list1(tag(","), u32)),
+        separated_pair(is_a("#.?"), space1, separated_list1(tag(","), u8)),
     )(input)
 }
 
-fn get_input(input: &str) -> Vec<(&str, Vec<u32>)> {
+#[derive(Debug, Clone)]
+struct Sequence<'a> {
+    prev: char,
+    rem: &'a str,
+    patterns: VecDeque<u8>,
+    count: u64,
+}
+
+fn get_input(input: &str) -> Vec<(&str, Vec<u8>)> {
     separated_list1(newline, parse_line)(input)
         .expect("Expected to parse file")
         .1
 }
 
-// fn get_all_sequences(seq_fix: String, seq_rem: String, patterns: Vec<u32>) -> Vec<String> {
-fn get_all_sequences(seq_fix: String, seq_rem: String, patterns: Vec<u32>) -> u64 {
-    let mut substrings = 0;
-    // dbg!(&seq_fix, &seq_rem);
-    if !seq_rem.is_empty() {
-        let start = seq_rem
-            .chars()
-            .next()
-            .expect("Expected char in next position");
-        let prev = seq_fix.chars().last();
-        if !patterns.is_empty() {
-            let seq_req = patterns.iter().map(|x| x + 1).sum::<u32>() - 1;
-            if seq_req as usize > seq_rem.len() {
-                return 0
-            }
-        }
-        match start {
-            '.' => {
-                // Move string up 1 char, repeat
-                return get_all_sequences(
-                    seq_fix.add("."),
-                    seq_rem.strip_prefix('.').expect("Dot expected").to_string(),
-                    patterns,
-                );
-            }
-            _ => {
-                if start == '?' {
-                    // Match ? to ., move string up 1 char, repeat
-                    let all_seq = get_all_sequences(
-                        seq_fix.clone().add("."),
-                        seq_rem
-                            .strip_prefix('?')
-                            .expect("Questionmark expected")
-                            .to_string(),
-                        patterns.clone(),
-                    );
-                    substrings += all_seq;
-                }
-                let next_dot = seq_rem.find('.');
-                let limit: usize = if next_dot.is_some() {
-                    std::cmp::min(seq_rem.len(), next_dot.unwrap())
+fn get_all_sequences(seq: Sequence) -> u64 {
+    let mut combinations = 0;
+    let mut active_seq = vec![seq];
+    while active_seq.len() > 0 {
+        let mut next_seq = vec![];
+        active_seq
+            .into_iter()
+            .map(|seq| {
+                if seq.rem.is_empty() {
+                    if seq.patterns.is_empty() {
+                        // Found correct sequence, increment combinations
+                        combinations += seq.count;
+                    }
                 } else {
-                    seq_rem.len()
-                };
-                if !patterns.is_empty()
-                    && patterns[0] as usize <= limit
-                    && (prev.is_none() || prev.is_some_and(|x| x != '#'))
-                {
-                    let mut pattern_new = patterns.clone();
-                    pattern_new.remove(0);
-                    // Sequence can fit, repeat with remaining sequences
-                    let all_seq = get_all_sequences(
-                        seq_fix
-                            .clone()
-                            .add("#".repeat(patterns[0] as usize).as_str()),
-                        seq_rem.clone().split_off(patterns[0] as usize),
-                        pattern_new,
-                    );
-                    // substrings.extend(all_seq);
-                    substrings += all_seq;
+                    // Remaining sequence needs to be longer than requirement from pattern
+                    let start = seq
+                        .rem
+                        .chars()
+                        .next()
+                        .expect("Expected char in next position");
+                    let req = seq.patterns.iter().map(|&x| 1 + x as i8).sum::<i8>() - 1;
+                    if req <= seq.rem.len() as i8 {
+                        match start {
+                            '.' => {
+                                // Move string up 1 char, add to next
+                                next_seq.push(Sequence {
+                                    prev: '.',
+                                    rem: seq.rem.strip_prefix('.').expect("Dot expected"),
+                                    patterns: seq.patterns.clone(),
+                                    count: seq.count,
+                                })
+                            }
+                            _ => {
+                                if start == '?' {
+                                    // Match ? to ., move string up 1 char, repeat
+                                    next_seq.push(Sequence {
+                                        prev: '.',
+                                        rem: seq.rem.strip_prefix('?').expect("Dot expected"),
+                                        patterns: seq.patterns.clone(),
+                                        count: seq.count,
+                                    })
+                                }
+                                let next_dot = seq.rem.find('.');
+                                let limit: usize = match next_dot {
+                                    Some(value) => std::cmp::min(seq.rem.len(), value),
+                                    None => seq.rem.len(),
+                                };
+                                if !seq.patterns.is_empty()
+                                    && seq.patterns[0] as usize <= limit
+                                    && seq.prev != '#'
+                                {
+                                    // Sequence can fit, repeat with remaining sequences
+                                    let mut patterns_new = seq.patterns.clone();
+                                    patterns_new.remove(0);
+                                    next_seq.push(Sequence {
+                                        prev: '#',
+                                        rem: &seq.rem[seq.patterns[0] as usize..],
+                                        patterns: patterns_new,
+                                        count: seq.count,
+                                    })
+                                }
+                            }
+                        }
+                    }
                 }
-                return substrings;
-            }
-        }
-    }
-    if patterns.is_empty() && seq_rem.is_empty() {
-        // return vec![seq_fix];
-        return 1;
-    }
-    0
-}
+            })
+            .collect_vec();
 
-fn unfold_seq(seq: &str, pattern: Vec<u32>) -> (String, Vec<u32>) {
-    let seq_new = [seq; 5].join("?");
-    let pattern_new = vec![pattern; 5].into_iter().flatten().collect_vec();
-    (seq_new, pattern_new)
+        // Find unique combinations, sum up their counts
+        let unique_seq = next_seq
+            .iter()
+            .map(|seq| (seq.prev, seq.rem, seq.patterns.clone()))
+            .collect::<HashSet<(char, &str, VecDeque<u8>)>>();
+
+        let mut red_seq = Vec::new();
+        for useq in unique_seq {
+            let total_count = next_seq
+                .iter()
+                .filter(|seq| seq.prev == useq.0 && seq.rem == useq.1 && seq.patterns == useq.2)
+                .map(|seq| seq.count)
+                .sum::<u64>();
+            red_seq.push(Sequence {
+                prev: useq.0,
+                rem: useq.1,
+                patterns: useq.2,
+                count: total_count,
+            })
+        }
+        active_seq = red_seq;
+    }
+    combinations
 }
 
 fn run(input: String) -> u64 {
-    let seq_inst = get_input(input.as_str());
-    let seq_inst_5 = seq_inst
-        .clone()
+    let seq_input = get_input(input.as_str())
         .into_iter()
-        .map(|(seq, pattern)| unfold_seq(seq, pattern))
+        .map(|(seq, patterns)| {
+            (
+                [seq; 5].join("?"),
+                vec![patterns; 5].into_iter().flatten().collect_vec(),
+            )
+        })
         .collect_vec();
-    let seq_all = seq_inst_5
-        .into_iter()
-        .map(|(seq, patterns)| get_all_sequences("".to_string(), seq.to_string(), patterns.clone()))
+
+    // Unfold for part 2
+    let seq_inst = seq_input
+        .iter()
+        .map(|(seq, patterns)| Sequence {
+            prev: '.',
+            rem: seq.as_str(),
+            patterns: VecDeque::from(patterns.clone()),
+            count: 1,
+        })
+        .collect_vec();
+    let seq_all = seq_inst
+        .into_par_iter()
+        .map(|seq| get_all_sequences(seq))
         .sum::<u64>();
     seq_all
 }
@@ -127,20 +170,19 @@ fn main() {
 }
 
 #[cfg(test)]
-
 #[rstest]
 #[case("???.### 1,1,3", 1)]
 #[case(".??..??...?##. 1,1,3", 16384)]
 #[case("?#?#?#?#?#?#?#? 1,3,1,6", 1)]
 #[case("????.#...#... 4,1,1", 16)]
 #[case("????.######..#####. 1,6,5", 2500)]
-// #[case("?###???????? 3,2,1", 506250)] // case 6
-// #[case("?????????????#. 5,1,4", 60000)]
-// #[case(".??.?#??##???. 1,6", 0)]
-// #[case("?#???.#??#?????.? 3,1,3,1,1", 0)] // case 9 (med)
-// #[case("??#????#??#???.?? 4,7,1", 0)] // case 10 (med)
+#[case("?###???????? 3,2,1", 506250)] // case 6
+#[case("?????????????#. 5,1,4", 60000)]
+#[case(".??.?#??##???. 1,6", 42725)]
+#[case("?#???.#??#?????.? 3,1,3,1,1", 1259712)] // case 9 (med)
+#[case("??#????#??#???.?? 4,7,1", 3498125)] // case 10 (med)  15 sec / 4 sec release
 // #[case("??#?.?#?#???#?#?? 1,11", 0)]
-// #[case("?????????? 1,4,1", 0)] // case 12 (med)
+// #[case("?????????? 1,4,1", 3268760)] // case 12 (med)
 // #[case("?#?#????..?????? 6,4", 0)]
 // #[case("?#?#?.#?#???????..? 5,1,1,3,2,1", 0)]
 // #[case("?.#??#??.??????.? 6,1,1,1", 0)] // case 15 (extreme)
@@ -152,7 +194,7 @@ fn main() {
 // #[case("?#???#???# 1,1,2", 0)]
 // #[case("#???#??..?????.??.?. 5,1,1,1,2,1", 0)]
 // #[case("??#??.?#??????. 2,2,1,1,1", 0)] // case 23 (med)
-// #[case("??????.???..??#?? 1,2,1,4", 0)] // case 24 (extreme)
+// #[case("??????.???..??#?? 1,2,1,4", 1)] // case 24 (extreme)
 // #[case(".?#??#???#??#?????. 12,3", 0)]
 // #[case("??#???#?.?##?.?? 6,3", 0)]
 // #[case("?#?#?.??#???? 3,1,1,1", 0)]
