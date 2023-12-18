@@ -76,26 +76,32 @@ fn get_grid(input: String) -> HashMap<IVec2, u8> {
     map
 }
 
-fn traverse_grid(
+fn traverse_grid<'a>(
     start: Node,
-    grid: &HashMap<IVec2, u8>,
-    cost_exp: &HashMap<IVec2, u32>,
+    grid: HashMap<IVec2, u8>,
+    cost_exp: HashMap<IVec2, u32>,
     max_x: u32,
     max_y: u32,
-) -> Vec<Node> {
-    let mut max_total: HashMap<(IVec2, VecDeque<Directions>), u32> = HashMap::new();
-    let mut best_candidates = VecDeque::new();
-    best_candidates.push_front(start);
-    let mut searched_candidates = VecDeque::new();
-    let mut complete_paths = Vec::new();
-    while complete_paths.len() == 0 {
-        let best_cand = best_candidates.pop_front().unwrap();
-        let mut active_paths = Vec::new();
-        searched_candidates.push_back(best_cand.clone());
-        active_paths.push(best_cand);
+) -> Vec<((IVec2, VecDeque<Directions>), u32)> {
+    let mut complete = Vec::new();
+    let mut cost_real: HashMap<(IVec2, VecDeque<Directions>), u32> = HashMap::new();
+    let mut searched_nodes = VecDeque::new();
+    let mut best_nodes = VecDeque::new();
+    best_nodes.push_front(start);
+    let mut iter = 0;
+    while complete.len() == 0 {
+        iter += 1;
+        if iter % 20 == 0 {
+            println!("Running iteration {}", iter);
+        }
+        let mut active_nodes = Vec::new();
+        let parallel_nodes = std::cmp::min(best_nodes.len(), 100);
+        for _i in 0..parallel_nodes {
+            active_nodes.push(best_nodes.pop_front().unwrap());
+        }
+        searched_nodes.extend(active_nodes.clone());
 
-        let mut next_paths = vec![];
-        active_paths
+        active_nodes
             .iter()
             .map(|path| {
                 if path.last.len() == 0
@@ -121,23 +127,17 @@ fn traverse_grid(
                         Some(&value) => {
                             let new_total = path.total + value as u32;
                             // let new_total_mod = path.total_mod + grid_mod.get(&next_pos).unwrap();
-                            let max_cur_pos = max_total.get(&(next_pos, new_last.clone()));
+                            let max_cur_pos = cost_real.get(&(next_pos, new_last.clone()));
                             match max_cur_pos {
                                 Some(&max_pos_value) => {
                                     if new_total < max_pos_value {
-                                        max_total
-                                            .insert((next_pos, new_last.clone()), new_total);
+                                        cost_real.insert((next_pos, new_last.clone()), new_total);
                                     }
                                 }
                                 None => {
-                                    max_total.insert((next_pos, new_last.clone()), new_total);
+                                    cost_real.insert((next_pos, new_last.clone()), new_total);
                                 }
                             }
-                            next_paths.push(Node {
-                                pos: next_pos,
-                                total: new_total,
-                                last: new_last,
-                            })
                         }
                         None => (),
                     }
@@ -160,24 +160,17 @@ fn traverse_grid(
                     match grid_value {
                         Some(&value) => {
                             let new_total = path.total + value as u32;
-                            // let new_total_mod = path.total_mod + grid_mod.get(&next_pos).unwrap();
-                            let max_cur_pos = max_total.get(&(next_pos, new_last.clone()));
-                            match max_cur_pos {
+                            let new_cost_real = cost_real.get(&(next_pos, new_last.clone()));
+                            match new_cost_real {
                                 Some(&max_pos_value) => {
                                     if new_total < max_pos_value {
-                                        max_total
-                                            .insert((next_pos, new_last.clone()), new_total);
+                                        cost_real.insert((next_pos, new_last.clone()), new_total);
                                     }
                                 }
                                 None => {
-                                    max_total.insert((next_pos, new_last.clone()), new_total);
+                                    cost_real.insert((next_pos, new_last.clone()), new_total);
                                 }
                             }
-                            next_paths.push(Node {
-                                pos: next_pos,
-                                total: new_total,
-                                last: new_last,
-                            })
                         }
                         None => (),
                     }
@@ -204,24 +197,17 @@ fn traverse_grid(
                     match grid_value {
                         Some(&value) => {
                             let new_total = path.total + value as u32;
-                            // let new_total_mod = path.total_mod + grid_mod.get(&next_pos).unwrap();
-                            let max_cur_pos = max_total.get(&(next_pos, new_last.clone()));
+                            let max_cur_pos = cost_real.get(&(next_pos, new_last.clone()));
                             match max_cur_pos {
                                 Some(&max_pos_value) => {
                                     if new_total < max_pos_value {
-                                        max_total
-                                            .insert((next_pos, new_last.clone()), new_total);
+                                        cost_real.insert((next_pos, new_last.clone()), new_total);
                                     }
                                 }
                                 None => {
-                                    max_total.insert((next_pos, new_last.clone()), new_total);
+                                    cost_real.insert((next_pos, new_last.clone()), new_total);
                                 }
                             }
-                            next_paths.push(Node {
-                                pos: next_pos,
-                                total: new_total,
-                                last: new_last,
-                            })
                         }
                         None => (),
                     }
@@ -244,24 +230,17 @@ fn traverse_grid(
                     match grid_value {
                         Some(&value) => {
                             let new_total = path.total + value as u32;
-                            // let new_total_mod = path.total_mod + grid_mod.get(&next_pos).unwrap();
-                            let max_cur_pos = max_total.get(&(next_pos, new_last.clone()));
+                            let max_cur_pos = cost_real.get(&(next_pos, new_last.clone()));
                             match max_cur_pos {
                                 Some(&max_pos_value) => {
                                     if new_total < max_pos_value {
-                                        max_total
-                                            .insert((next_pos, new_last.clone()), new_total);
+                                        cost_real.insert((next_pos, new_last.clone()), new_total);
                                     }
                                 }
                                 None => {
-                                    max_total.insert((next_pos, new_last.clone()), new_total);
+                                    cost_real.insert((next_pos, new_last.clone()), new_total);
                                 }
                             }
-                            next_paths.push(Node {
-                                pos: next_pos,
-                                total: new_total,
-                                last: new_last,
-                            })
                         }
                         None => (),
                     }
@@ -269,19 +248,19 @@ fn traverse_grid(
             })
             .collect_vec();
 
-        next_paths
-            .iter()
-            .filter(|path| {
-                path.pos
-                    == (IVec2 {
+        complete.extend(
+            cost_real
+                .clone()
+                .into_iter()
+                .filter(|((pos, _), _)| {
+                    pos == (&IVec2 {
                         x: max_x as i32,
                         y: max_y as i32,
                     })
-            })
-            .map(|path| complete_paths.push(path.clone()))
-            .collect_vec();
+                })
+                .collect::<Vec<((IVec2, VecDeque<Directions>), u32)>>());
 
-        best_candidates = max_total
+        best_nodes = cost_real
             .iter()
             .sorted_by(|((pos_a, _), val_a), ((pos_b, _), val_b)| {
                 Ord::cmp(
@@ -294,10 +273,11 @@ fn traverse_grid(
                 total: val,
                 last: last.clone(),
             })
-            .filter(|cand| !searched_candidates.contains(cand))
+            .filter(|cand| !searched_nodes.contains(cand))
+            .take(100)
             .collect();
     }
-    complete_paths
+    complete
 }
 
 fn run(input: String) -> u32 {
@@ -314,10 +294,10 @@ fn run(input: String) -> u32 {
         total: 0,
         last: VecDeque::new(),
     };
-    let paths = traverse_grid(start, &gridmap, &cost_exp, max_x, max_y);
+    let paths = traverse_grid(start, gridmap, cost_exp, max_x, max_y);
     paths
-        .iter()
-        .map(|p| p.total)
+        .into_iter()
+        .map(|((pos, last), value)| value)
         .min()
         .expect("At least one shortest path expected")
 }
