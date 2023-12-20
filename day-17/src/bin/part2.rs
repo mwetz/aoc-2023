@@ -1,98 +1,58 @@
 use glam::i32::IVec2;
 use itertools::Itertools;
 use nom::branch::alt;
-use nom::character::complete::char;
+use nom::bytes::complete::tag;
 use nom::character::complete::{line_ending, space0};
 use nom::multi::many1;
 use nom::multi::separated_list1;
 use nom::sequence::preceded;
 use nom::IResult;
+use pathfinding::grid;
+use pathfinding::prelude::astar;
 use rayon::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 
 fn read_input() -> String {
     fs::read_to_string("src/bin/input.txt").expect("Expected to read the file")
 }
 
-#[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
-enum Tile {
-    MirrorNE,
-    MirrorNW,
-    SplitterNS,
-    SplitterWE,
-    Empty,
-}
-
-#[derive(Debug, Eq, PartialEq, Clone)]
-struct Point {
-    x: usize,
-    y: usize,
-    tile: Tile,
-}
-
-#[derive(Debug, Eq, PartialEq, Clone, Hash, Copy)]
-enum Direction {
-    North,
-    East,
-    South,
-    West,
-}
-
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
-struct Beam {
-    pos: IVec2,
-    dir: Direction,
-}
-
-impl Direction {
-    fn step(&self, position: &IVec2) -> IVec2 {
-        match self {
-            Direction::North => *position + IVec2::new(0, -1),
-            Direction::East => *position + IVec2::new(1, 0),
-            Direction::South => *position + IVec2::new(0, 1),
-            Direction::West => *position + IVec2::new(-1, 0),
-        }
-    }
-}
-
-fn parse_line(input: &str) -> IResult<&str, Vec<char>> {
+fn parse_line(input: &str) -> IResult<&str, Vec<&str>> {
     preceded(
         space0,
         many1(alt((
-            char('\\'),
-            char('/'),
-            char('|'),
-            char('-'),
-            char('.'),
+            tag("0"),
+            tag("1"),
+            tag("2"),
+            tag("3"),
+            tag("4"),
+            tag("5"),
+            tag("6"),
+            tag("7"),
+            tag("8"),
+            tag("9"),
         ))),
     )(input)
 }
 
-fn get_input(input: &str) -> IResult<&str, Vec<Vec<char>>> {
+fn get_input(input: &str) -> IResult<&str, Vec<Vec<&str>>> {
     separated_list1(line_ending, parse_line)(input)
 }
 
-fn get_grid(input: String) -> HashMap<IVec2, Tile> {
+fn get_grid(input: String) -> HashMap<IVec2, i32> {
     let grid = get_input(input.as_str())
         .expect("Expected to parse input")
         .1;
-    let mut map: HashMap<IVec2, Tile> = HashMap::new();
+    let mut map: HashMap<IVec2, i32> = HashMap::new();
     grid.iter()
         .enumerate()
         .map(|(y, line)| {
             line.iter()
                 .enumerate()
-                .map(|(x, tile)| {
+                .map(|(x, cost)| {
                     map.insert(
                         IVec2::new(x as i32, y as i32),
-                        match tile {
-                            '/' => Tile::MirrorNE,
-                            '\\' => Tile::MirrorNW,
-                            '-' => Tile::SplitterWE,
-                            '|' => Tile::SplitterNS,
-                            _ => Tile::Empty,
-                        },
+                        cost.parse().expect("Number expected"),
                     )
                 })
                 .collect_vec()
@@ -100,171 +60,262 @@ fn get_grid(input: String) -> HashMap<IVec2, Tile> {
         .collect_vec();
     map
 }
-fn trace_beam(map: &HashMap<IVec2, Tile>, starting_beam: Beam) -> HashSet<Beam> {
-    let mut active_beams = Vec::new();
-    let mut path: HashSet<Beam> = HashSet::new();
-    active_beams.push(starting_beam);
-    while active_beams.len() > 0 {
-        let beams_next = active_beams
-            .iter()
-            .map(|beam| Beam {
-                pos: beam.dir.step(&beam.pos),
-                dir: beam.dir,
-            })
-            .filter(|beam| !path.contains(beam))
-            .collect_vec();
 
-        let mut new_beams = vec![];
-        beams_next
-            .into_iter()
-            .map(|beam| {
-                // Check new tile
-                match map.get(&beam.pos) {
-                    Some(tile) => match tile {
-                        Tile::MirrorNE => match beam.dir {
-                            Direction::North => new_beams.push(Beam {
-                                pos: beam.pos,
-                                dir: Direction::East,
-                            }),
-                            Direction::East => new_beams.push(Beam {
-                                pos: beam.pos,
-                                dir: Direction::North,
-                            }),
-                            Direction::South => new_beams.push(Beam {
-                                pos: beam.pos,
-                                dir: Direction::West,
-                            }),
-                            Direction::West => new_beams.push(Beam {
-                                pos: beam.pos,
-                                dir: Direction::South,
-                            }),
-                        },
-                        Tile::MirrorNW => match beam.dir {
-                            Direction::North => new_beams.push(Beam {
-                                pos: beam.pos,
-                                dir: Direction::West,
-                            }),
-                            Direction::East => new_beams.push(Beam {
-                                pos: beam.pos,
-                                dir: Direction::South,
-                            }),
-                            Direction::South => new_beams.push(Beam {
-                                pos: beam.pos,
-                                dir: Direction::East,
-                            }),
-                            Direction::West => new_beams.push(Beam {
-                                pos: beam.pos,
-                                dir: Direction::North,
-                            }),
-                        },
-                        Tile::SplitterNS => match beam.dir {
-                            Direction::North | Direction::South => new_beams.push(Beam {
-                                pos: beam.pos,
-                                dir: beam.dir,
-                            }),
-                            Direction::East | Direction::West => {
-                                new_beams.push(Beam {
-                                    pos: beam.pos,
-                                    dir: Direction::North,
-                                });
-                                new_beams.push(Beam {
-                                    pos: beam.pos,
-                                    dir: Direction::South,
-                                });
-                            }
-                        },
-                        Tile::SplitterWE => match beam.dir {
-                            Direction::East | Direction::West => new_beams.push(Beam {
-                                pos: beam.pos,
-                                dir: beam.dir,
-                            }),
-                            Direction::North | Direction::South => {
-                                new_beams.push(Beam {
-                                    pos: beam.pos,
-                                    dir: Direction::East,
-                                });
-                                new_beams.push(Beam {
-                                    pos: beam.pos,
-                                    dir: Direction::West,
-                                });
-                            }
-                        },
-                        Tile::Empty => new_beams.push(Beam {
-                            pos: beam.pos,
-                            dir: beam.dir,
-                        }),
-                    },
-                    // None means we are out of bounds
-                    None => (),
-                }
-            })
-            .collect_vec();
-        path.extend(new_beams.clone());
-        active_beams = new_beams;
-    }
-    path
+#[derive(Eq, PartialEq, Clone, Debug, Hash, Copy)]
+enum Directions {
+    North,
+    East,
+    South,
+    West,
 }
 
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+struct Node {
+    pos: IVec2,
+    last: VecDeque<Directions>,
+}
 
-fn run(input: String) -> usize {
-    let gridmap = get_grid(input);
-    let max_x = gridmap
-        .iter()
-        .map(|(pos, _)| pos.x)
-        .max()
-        .expect("Grid needs a max value in direction x");
-    let max_y = gridmap
-        .iter()
-        .map(|(pos, _)| pos.y)
-        .max()
-        .expect("Grid needs a max value in direction y");
-    let starting_beams_x = gridmap
-        .iter()
-        .filter(|(pos, _)| pos.x == 0 || pos.x == max_x)
-        .map(|(pos, _)| match pos.x {
-            0 => Beam {
-                pos: IVec2::new(-1, pos.y),
-                dir: Direction::East,
+fn move_one_into_dir(
+    node: Node,
+    dir: Directions,
+    gridcost: &HashMap<IVec2, i32>,
+) -> Option<(Node, i32)> {
+    let node = Node {
+        pos: node.pos
+            + match dir {
+                Directions::North => IVec2 { x: 0, y: -1 },
+                Directions::East => IVec2 { x: 1, y: 0 },
+                Directions::South => IVec2 { x: 0, y: 1 },
+                Directions::West => IVec2 { x: -1, y: 0 },
             },
-            _ => Beam {
-                pos: IVec2::new(max_x + 1, pos.y),
-                dir: Direction::West,
+        last: {
+            let mut new_last = node.last.clone();
+            new_last.remove(10);
+            new_last.push_front(dir);
+            new_last
+        },
+    };
+    if let Some(val) = gridcost.get(&node.pos) {
+        Some((node, *val))
+    } else {
+        None
+    }
+}
+
+fn move_four_into_dir(
+    node: Node,
+    dir: Directions,
+    gridcost: &HashMap<IVec2, i32>,
+) -> Option<(Node, i32)> {
+    let mut node = node;
+    let mut val = 0;
+    for _i in 0..4 {
+        if let Some(new_pos) = move_one_into_dir(node, dir, gridcost) {
+            node = new_pos.0;
+            val += new_pos.1;
+        } else {
+            return None;
+        }
+    }
+    return Some((node, val));
+}
+
+impl Node {
+    fn distance(&self, other: &Node) -> i32 {
+        (self.pos.x.abs_diff(other.pos.x) + self.pos.y.abs_diff(other.pos.y)) as i32
+    }
+
+    fn successors(&self, gridcost: &HashMap<IVec2, i32>) -> Vec<(Node, i32)> {
+        let mut sucessors = Vec::new();
+        match self.last.get(0) {
+            Some(last) => match last {
+                Directions::North => {
+                    if self.last.len() > 9
+                        && self.last.iter().take(10).collect_vec() == vec![&Directions::North; 10]
+                    {
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::East, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::West, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                    } else {
+                        if let Some(node_val) =
+                            move_one_into_dir(self.clone(), Directions::North, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::East, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::West, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                    }
+                }
+                Directions::East => {
+                    if self.last.len() > 9
+                        && self.last.iter().take(10).collect_vec() == vec![&Directions::East; 10]
+                    {
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::North, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::South, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                    } else {
+                        if let Some(node_val) =
+                            move_one_into_dir(self.clone(), Directions::East, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::North, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::South, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                    }
+                }
+                Directions::South => {
+                    if self.last.len() > 9
+                        && self.last.iter().take(10).collect_vec() == vec![&Directions::South; 10]
+                    {
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::East, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::West, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                    } else {
+                        if let Some(node_val) =
+                            move_one_into_dir(self.clone(), Directions::South, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::East, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::West, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                    }
+                }
+                Directions::West => {
+                    if self.last.len() > 9
+                        && self.last.iter().take(10).collect_vec() == vec![&Directions::West; 10]
+                    {
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::North, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::South, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                    } else {
+                        if let Some(node_val) =
+                            move_one_into_dir(self.clone(), Directions::West, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::North, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                        if let Some(node_val) =
+                            move_four_into_dir(self.clone(), Directions::South, gridcost)
+                        {
+                            sucessors.push(node_val)
+                        }
+                    }
+                }
             },
-        })
-        .collect_vec();
-    let starting_beams_y = gridmap
-        .iter()
-        .filter(|(pos, _)| pos.y == 0 || pos.y == max_y)
-        .map(|(pos, _)| match pos.y {
-            0 => Beam {
-                pos: IVec2::new(pos.x, -1),
-                dir: Direction::South,
-            },
-            _ => Beam {
-                pos: IVec2::new(pos.x, max_y + 1),
-                dir: Direction::North,
-            },
-        })
-        .collect_vec();
-    let starting_beams = [starting_beams_x, starting_beams_y].concat();
-    starting_beams
-        .into_par_iter()
-        .map(|beam| {
-            trace_beam(&gridmap, beam)
-                .into_iter()
-                .map(|beam| beam.pos)
-                .collect::<HashSet<IVec2>>()
-                .into_iter()
-                .count()
-        })
-        .max()
-        .expect("Maximum expected")
+            None => {
+                if let Some(node_val) =
+                    move_four_into_dir(self.clone(), Directions::North, gridcost)
+                {
+                    sucessors.push(node_val)
+                }
+                if let Some(node_val) = move_four_into_dir(self.clone(), Directions::East, gridcost)
+                {
+                    sucessors.push(node_val)
+                }
+                if let Some(node_val) =
+                    move_four_into_dir(self.clone(), Directions::South, gridcost)
+                {
+                    sucessors.push(node_val)
+                }
+                if let Some(node_val) = move_four_into_dir(self.clone(), Directions::West, gridcost)
+                {
+                    sucessors.push(node_val)
+                }
+            }
+        }
+        sucessors
+    }
+}
+
+fn run(input: String) -> i32 {
+    let cost_map = get_grid(input);
+    let max_x = cost_map.keys().map(|grid| grid.x).max().unwrap() as i32;
+    let max_y = cost_map.keys().map(|grid| grid.y).max().unwrap() as i32;
+    let cost_min = cost_map
+        .clone()
+        .into_iter()
+        .map(|(pos, _)| (pos, (max_x - pos.x) + (max_y - pos.y)))
+        .collect::<HashMap<IVec2, i32>>();
+    let start = Node {
+        pos: IVec2 { x: 0, y: 0 },
+        last: VecDeque::with_capacity(10),
+    };
+    let goal = Node {
+        pos: IVec2 { x: max_x, y: max_y },
+        last: VecDeque::with_capacity(10),
+    };
+    let result = astar(
+        &start,
+        |p| p.successors(&cost_map),
+        |p| p.distance(&goal),
+        |p| p.pos == goal.pos,
+    );
+    dbg!(&result);
+    result.unwrap().1
 }
 
 fn main() {
     let input: String = read_input();
     let sum = run(input);
     println!("{sum}")
+    // 1168 Answer too low
+    // 1439 Answer too high
 }
 
 #[cfg(test)]
@@ -273,16 +324,19 @@ mod tests {
     use super::*;
     #[test]
     fn test() {
-        let input: &'static str = r".|...\....
-|.-.\.....
-.....|-...
-........|.
-..........
-.........\
-..../.\\..
-.-.-/..|..
-.|....-|.\
-..//.|....";
-        assert_eq!(run(input.to_string()), 51);
+        let input: &'static str = r"2413432311323
+        3215453535623
+        3255245654254
+        3446585845452
+        4546657867536
+        1438598798454
+        4457876987766
+        3637877979653
+        4654967986887
+        4564679986453
+        1224686865563
+        2546548887735
+        4322674655533";
+        assert_eq!(run(input.to_string()), 94);
     }
 }

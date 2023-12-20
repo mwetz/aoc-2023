@@ -1,32 +1,17 @@
-use core::slice;
 use glam::i32::IVec2;
 use itertools::Itertools;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
-use nom::character::complete::{char, digit1};
 use nom::character::complete::{line_ending, space0};
 use nom::multi::many1;
 use nom::multi::separated_list1;
 use nom::sequence::preceded;
 use nom::IResult;
+use pathfinding::prelude::astar;
 use rayon::prelude::*;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::fs;
-
-#[derive(Eq, PartialEq, Clone, Debug, Hash, Copy)]
-enum Directions {
-    North,
-    East,
-    South,
-    West,
-}
-
-#[derive(Eq, PartialEq, Clone, Debug, Hash)]
-struct Node {
-    pos: IVec2,
-    total: u32,
-    last: VecDeque<Directions>,
-}
+use std::iter::Successors;
 
 fn read_input() -> String {
     fs::read_to_string("src/bin/input.txt").expect("Expected to read the file")
@@ -54,11 +39,11 @@ fn get_input(input: &str) -> IResult<&str, Vec<Vec<&str>>> {
     separated_list1(line_ending, parse_line)(input)
 }
 
-fn get_grid(input: String) -> HashMap<IVec2, u8> {
+fn get_grid(input: String) -> HashMap<IVec2, i32> {
     let grid = get_input(input.as_str())
         .expect("Expected to parse input")
         .1;
-    let mut map: HashMap<IVec2, u8> = HashMap::new();
+    let mut map: HashMap<IVec2, i32> = HashMap::new();
     grid.iter()
         .enumerate()
         .map(|(y, line)| {
@@ -76,239 +61,161 @@ fn get_grid(input: String) -> HashMap<IVec2, u8> {
     map
 }
 
-fn traverse_grid<'a>(
-    start: Node,
-    grid: HashMap<IVec2, u8>,
-    cost_exp: HashMap<IVec2, u32>,
-    max_x: u32,
-    max_y: u32,
-) -> Vec<((IVec2, VecDeque<Directions>), u32)> {
-    let mut complete = Vec::new();
-    let mut cost_real: HashMap<(IVec2, VecDeque<Directions>), u32> = HashMap::new();
-    let mut searched_nodes = VecDeque::new();
-    let mut best_nodes = VecDeque::new();
-    best_nodes.push_front(start);
-    let mut iter = 0;
-    while complete.len() == 0 {
-        iter += 1;
-        if iter % 20 == 0 {
-            println!("Running iteration {}", iter);
-        }
-        let mut active_nodes = Vec::new();
-        let parallel_nodes = std::cmp::min(best_nodes.len(), 100);
-        for _i in 0..parallel_nodes {
-            active_nodes.push(best_nodes.pop_front().unwrap());
-        }
-        searched_nodes.extend(active_nodes.clone());
-
-        active_nodes
-            .iter()
-            .map(|path| {
-                if path.last.len() == 0
-                    || (path.last.len() > 0
-                        && path.last.len() < 3
-                        && path.last.get(0).unwrap() != &Directions::South)
-                    || (path.last.len() > 2
-                        && !path
-                            .last
-                            .iter()
-                            .take(3)
-                            .all(|dir| dir == &Directions::North)
-                        && path.last.get(0).unwrap() != &Directions::South)
-                {
-                    let next_pos = path.pos + IVec2 { x: 0, y: -1 };
-                    let grid_value = grid.get(&next_pos);
-                    let mut new_last = path.last.clone();
-                    if new_last.len() > 2 {
-                        new_last.remove(2);
-                    }
-                    new_last.push_front(Directions::North);
-                    match grid_value {
-                        Some(&value) => {
-                            let new_total = path.total + value as u32;
-                            // let new_total_mod = path.total_mod + grid_mod.get(&next_pos).unwrap();
-                            let max_cur_pos = cost_real.get(&(next_pos, new_last.clone()));
-                            match max_cur_pos {
-                                Some(&max_pos_value) => {
-                                    if new_total < max_pos_value {
-                                        cost_real.insert((next_pos, new_last.clone()), new_total);
-                                    }
-                                }
-                                None => {
-                                    cost_real.insert((next_pos, new_last.clone()), new_total);
-                                }
-                            }
-                        }
-                        None => (),
-                    }
-                }
-                if path.last.len() == 0
-                    || (path.last.len() > 0
-                        && path.last.len() < 3
-                        && path.last.get(0).unwrap() != &Directions::West)
-                    || (path.last.len() > 2
-                        && !path.last.iter().take(3).all(|dir| dir == &Directions::East)
-                        && path.last.get(0).unwrap() != &Directions::West)
-                {
-                    let next_pos = path.pos + IVec2 { x: 1, y: 0 };
-                    let grid_value = grid.get(&next_pos);
-                    let mut new_last = path.last.clone();
-                    if new_last.len() > 2 {
-                        new_last.remove(2);
-                    }
-                    new_last.push_front(Directions::East);
-                    match grid_value {
-                        Some(&value) => {
-                            let new_total = path.total + value as u32;
-                            let new_cost_real = cost_real.get(&(next_pos, new_last.clone()));
-                            match new_cost_real {
-                                Some(&max_pos_value) => {
-                                    if new_total < max_pos_value {
-                                        cost_real.insert((next_pos, new_last.clone()), new_total);
-                                    }
-                                }
-                                None => {
-                                    cost_real.insert((next_pos, new_last.clone()), new_total);
-                                }
-                            }
-                        }
-                        None => (),
-                    }
-                }
-                if path.last.len() == 0
-                    || (path.last.len() > 0
-                        && path.last.len() < 3
-                        && path.last.get(0).unwrap() != &Directions::North)
-                    || (path.last.len() > 2
-                        && !path
-                            .last
-                            .iter()
-                            .take(3)
-                            .all(|dir| dir == &Directions::South)
-                        && path.last.get(0).unwrap() != &Directions::North)
-                {
-                    let next_pos = path.pos + IVec2 { x: 0, y: 1 };
-                    let grid_value = grid.get(&next_pos);
-                    let mut new_last = path.last.clone();
-                    if new_last.len() > 2 {
-                        new_last.remove(2);
-                    }
-                    new_last.push_front(Directions::South);
-                    match grid_value {
-                        Some(&value) => {
-                            let new_total = path.total + value as u32;
-                            let max_cur_pos = cost_real.get(&(next_pos, new_last.clone()));
-                            match max_cur_pos {
-                                Some(&max_pos_value) => {
-                                    if new_total < max_pos_value {
-                                        cost_real.insert((next_pos, new_last.clone()), new_total);
-                                    }
-                                }
-                                None => {
-                                    cost_real.insert((next_pos, new_last.clone()), new_total);
-                                }
-                            }
-                        }
-                        None => (),
-                    }
-                }
-                if path.last.len() == 0
-                    || (path.last.len() > 0
-                        && path.last.len() < 3
-                        && path.last.get(0).unwrap() != &Directions::East)
-                    || (path.last.len() > 2
-                        && !path.last.iter().take(3).all(|dir| dir == &Directions::West)
-                        && path.last.get(0).unwrap() != &Directions::East)
-                {
-                    let next_pos = path.pos + IVec2 { x: -1, y: 0 };
-                    let grid_value = grid.get(&next_pos);
-                    let mut new_last = path.last.clone();
-                    if new_last.len() > 2 {
-                        new_last.remove(2);
-                    }
-                    new_last.push_front(Directions::West);
-                    match grid_value {
-                        Some(&value) => {
-                            let new_total = path.total + value as u32;
-                            let max_cur_pos = cost_real.get(&(next_pos, new_last.clone()));
-                            match max_cur_pos {
-                                Some(&max_pos_value) => {
-                                    if new_total < max_pos_value {
-                                        cost_real.insert((next_pos, new_last.clone()), new_total);
-                                    }
-                                }
-                                None => {
-                                    cost_real.insert((next_pos, new_last.clone()), new_total);
-                                }
-                            }
-                        }
-                        None => (),
-                    }
-                }
-            })
-            .collect_vec();
-
-        complete.extend(
-            cost_real
-                .clone()
-                .into_iter()
-                .filter(|((pos, _), _)| {
-                    pos == (&IVec2 {
-                        x: max_x as i32,
-                        y: max_y as i32,
-                    })
-                })
-                .collect::<Vec<((IVec2, VecDeque<Directions>), u32)>>());
-
-        best_nodes = cost_real
-            .iter()
-            .sorted_by(|((pos_a, _), val_a), ((pos_b, _), val_b)| {
-                Ord::cmp(
-                    &(*val_a + cost_exp.get(pos_a).unwrap()),
-                    &(*val_b + cost_exp.get(pos_b).unwrap()),
-                )
-            })
-            .map(|((pos, last), &val)| Node {
-                pos: *pos,
-                total: val,
-                last: last.clone(),
-            })
-            .filter(|cand| !searched_nodes.contains(cand))
-            .take(100)
-            .collect();
-    }
-    complete
+#[derive(Eq, PartialEq, Clone, Debug, Hash, Copy)]
+enum Directions {
+    North,
+    East,
+    South,
+    West,
 }
 
-fn run(input: String) -> u32 {
-    let gridmap = get_grid(input);
-    let max_x = gridmap.keys().map(|grid| grid.x).max().unwrap() as u32;
-    let max_y = gridmap.keys().map(|grid| grid.y).max().unwrap() as u32;
-    let cost_exp = gridmap
-        .clone()
-        .into_iter()
-        .map(|(pos, val)| (pos, (max_x - pos.x as u32) + (max_y - pos.y as u32)))
-        .collect::<HashMap<IVec2, u32>>();
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+struct Node {
+    pos: IVec2,
+    last: VecDeque<Directions>,
+}
+
+fn move_into_dir(node: Node, dir: Directions) -> Node {
+    return Node {
+        pos: node.pos
+            + match dir {
+                Directions::North => IVec2 { x: 0, y: -1 },
+                Directions::East => IVec2 { x: 1, y: 0 },
+                Directions::South => IVec2 { x: 0, y: 1 },
+                Directions::West => IVec2 { x: -1, y: 0 },
+            },
+        last: {
+            let mut new_last = node.last.clone();
+            new_last.remove(2);
+            new_last.push_front(dir);
+            new_last
+        },
+    };
+}
+
+impl Node {
+    fn distance(&self, other: &Node) -> i32 {
+        (self.pos.x.abs_diff(other.pos.x) + self.pos.y.abs_diff(other.pos.y)) as i32
+    }
+
+    fn successors(&self, gridcost: &HashMap<IVec2, i32>) -> Vec<(Node, i32)> {
+        let mut sucessors = Vec::new();
+        match self.last.get(0) {
+            Some(last) => match last {
+                Directions::North => {
+                    let new = move_into_dir(self.clone(), Directions::East);
+                    if let Some(val) = gridcost.get(&new.pos) {
+                        sucessors.push((new.clone(), *val));
+                    }
+                    let new = move_into_dir(self.clone(), Directions::West);
+                    if let Some(val) = gridcost.get(&new.pos) {
+                        sucessors.push((new.clone(), *val));
+                    }
+                    if self.last != vec![Directions::North, Directions::North, Directions::North] {
+                        let new = move_into_dir(self.clone(), Directions::North);
+                        if let Some(val) = gridcost.get(&new.pos) {
+                            sucessors.push((new.clone(), *val));
+                        }
+                    }
+                }
+                Directions::East => {
+                    let new = move_into_dir(self.clone(), Directions::North);
+                    if let Some(val) = gridcost.get(&new.pos) {
+                        sucessors.push((new.clone(), *val));
+                    }
+                    let new = move_into_dir(self.clone(), Directions::South);
+                    if let Some(val) = gridcost.get(&new.pos) {
+                        sucessors.push((new.clone(), *val));
+                    }
+                    if self.last != vec![Directions::East, Directions::East, Directions::East] {
+                        let new = move_into_dir(self.clone(), Directions::East);
+                        if let Some(val) = gridcost.get(&new.pos) {
+                            sucessors.push((new.clone(), *val));
+                        }
+                    }
+                }
+                Directions::South => {
+                    let new = move_into_dir(self.clone(), Directions::East);
+                    if let Some(val) = gridcost.get(&new.pos) {
+                        sucessors.push((new.clone(), *val));
+                    }
+                    let new = move_into_dir(self.clone(), Directions::West);
+                    if let Some(val) = gridcost.get(&new.pos) {
+                        sucessors.push((new.clone(), *val));
+                    }
+                    if self.last != vec![Directions::South, Directions::South, Directions::South] {
+                        let new = move_into_dir(self.clone(), Directions::South);
+                        if let Some(val) = gridcost.get(&new.pos) {
+                            sucessors.push((new.clone(), *val));
+                        }
+                    }
+                }
+                Directions::West => {
+                    let new = move_into_dir(self.clone(), Directions::North);
+                    if let Some(val) = gridcost.get(&new.pos) {
+                        sucessors.push((new.clone(), *val));
+                    }
+                    let new = move_into_dir(self.clone(), Directions::South);
+                    if let Some(val) = gridcost.get(&new.pos) {
+                        sucessors.push((new.clone(), *val));
+                    }
+                    if self.last != vec![Directions::West, Directions::West, Directions::West] {
+                        let new = move_into_dir(self.clone(), Directions::West);
+                        if let Some(val) = gridcost.get(&new.pos) {
+                            sucessors.push((new.clone(), *val));
+                        }
+                    }
+                }
+            },
+            None => {
+                let new = move_into_dir(self.clone(), Directions::North);
+                if let Some(val) = gridcost.get(&new.pos) {
+                    sucessors.push((new.clone(), *val));
+                }
+                let new = move_into_dir(self.clone(), Directions::East);
+                if let Some(val) = gridcost.get(&new.pos) {
+                    sucessors.push((new.clone(), *val));
+                }
+                let new = move_into_dir(self.clone(), Directions::South);
+                if let Some(val) = gridcost.get(&new.pos) {
+                    sucessors.push((new.clone(), *val));
+                }
+                let new = move_into_dir(self.clone(), Directions::West);
+                if let Some(val) = gridcost.get(&new.pos) {
+                    sucessors.push((new.clone(), *val));
+                }
+            }
+        }
+        sucessors
+    }
+}
+
+fn run(input: String) -> i32 {
+    let cost_map = get_grid(input);
+    let max_x = cost_map.keys().map(|grid| grid.x).max().unwrap() as i32;
+    let max_y = cost_map.keys().map(|grid| grid.y).max().unwrap() as i32;
     let start = Node {
         pos: IVec2 { x: 0, y: 0 },
-        total: 0,
-        last: VecDeque::new(),
+        last: VecDeque::with_capacity(3),
     };
-    let paths = traverse_grid(start, gridmap, cost_exp, max_x, max_y);
-    paths
-        .into_iter()
-        .map(|((pos, last), value)| value)
-        .min()
-        .expect("At least one shortest path expected")
+    let goal = Node {
+        pos: IVec2 { x: max_x, y: max_y },
+        last: VecDeque::with_capacity(3),
+    };
+    let result = astar(
+        &start,
+        |p| p.successors(&cost_map),
+        |p| p.distance(&goal),
+        |p| p.pos == goal.pos,
+    );
+    result.unwrap().1
 }
 
 fn main() {
     let input: String = read_input();
     let sum = run(input);
     println!("{sum}")
-    // 1031 Answer too low (high?)
-    // 1035 Answer too high
-    // 1271 Answer too high
+    // 1031 Answer too high
 }
 
 #[cfg(test)]

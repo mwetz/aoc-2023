@@ -13,3 +13,4 @@ num = {workspace = true, optional = true}
 rayon = {workspace = true, optional = false}
 ndarray = {workspace = true, optional = true}
 glam = {workspace = true, optional = false}
+pathfinding = {workspace = true, optional = false}
